@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>অ্যাডমিন প্যানেল — টিউশন প্লাটফর্ম</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin.css">
 </head>
 <body>
 <header>
@@ -20,46 +21,55 @@
   </nav>
 </header>
 
-<main class="container">
+<main class="container admin-container">
   <!-- লগইন গেট -->
   <div id="login-view">
-    <div class="form-card" style="margin-top:32px">
-      <h1 style="font-size:1.6rem">🔐 অ্যাডমিন প্যানেল</h1>
-      <p class="lead">অ্যাডমিন প্যানেলে ঢুকতে পাসকোড দিন।</p>
-      <div class="notice" id="login-notice" hidden></div>
-      <form id="login-form">
-        <div class="field">
-          <label for="passcode">পাসকোড</label>
-          <input id="passcode" type="password" required placeholder="পাসকোড লিখুন" autocomplete="current-password">
+    <div class="admin-login">
+      <div class="form-card">
+        <div class="admin-login-head">
+          <h1>🔐 অ্যাডমিন প্যানেল</h1>
+          <p>অ্যাডমিন প্যানেলে ঢুকতে পাসকোড দিন।</p>
         </div>
-        <button class="btn" type="submit" style="width:100%">প্যানেলে ঢুকুন</button>
-      </form>
-      <p class="muted" style="margin-top:16px">ডিফল্ট পাসকোড: <strong>admin123</strong> — প্রথমবার ঢুকে সেটিংস থেকে বদলে নিন।</p>
-      <p class="muted">এটি একটি সহজ পাসকোড গেট; এটি ব্যাংক-মানের নিরাপত্তা নয়।</p>
+        <div class="admin-login-body">
+          <div class="notice" id="login-notice" hidden></div>
+          <form id="login-form">
+            <div class="field">
+              <label for="passcode">পাসকোড</label>
+              <input id="passcode" type="password" required placeholder="পাসকোড লিখুন" autocomplete="current-password">
+            </div>
+            <button class="btn" type="submit" style="width:100%">প্যানেলে ঢুকুন</button>
+          </form>
+          <p class="muted" style="margin-top:16px">ডিফল্ট পাসকোড: <strong>admin123</strong> — প্রথমবার ঢুকে সেটিংস থেকে বদলে নিন।</p>
+          <p class="muted">এটি একটি সহজ পাসকোড গেট; এটি ব্যাংক-মানের নিরাপত্তা নয়।</p>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- প্যানেল -->
   <div id="panel-view" hidden>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-      <div>
-        <h1 style="margin-bottom:0">অ্যাডমিন প্যানেল</h1>
-        <p class="lead">টিউটর, অফার ও অনুরোধ — সবকিছু এক জায়গা থেকে দেখুন ও পরিচালনা করুন।</p>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <a class="btn secondary" href="index.html">সাইট দেখুন</a>
-        <button class="btn secondary" id="logout-btn" type="button">লগআউট</button>
-      </div>
-    </div>
-    <p class="muted" id="save-note"></p>
-
-    <div class="admin-tabs" role="tablist">
-      <button class="admin-tab active" data-tab="dashboard" type="button">ড্যাশবোর্ড</button>
-      <button class="admin-tab" data-tab="tutors" type="button">টিউটররা <span class="count" id="count-tutors"></span></button>
-      <button class="admin-tab" data-tab="offers" type="button">অফারসমূহ <span class="count" id="count-offers"></span></button>
-      <button class="admin-tab" data-tab="requests" type="button">অনুরোধসমূহ <span class="count" id="count-requests"></span></button>
-      <button class="admin-tab" data-tab="settings" type="button">সেটিংস</button>
-    </div>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="admin-tabs" role="tablist">
+          <button class="admin-tab active" data-tab="dashboard" type="button">ড্যাশবোর্ড</button>
+          <button class="admin-tab" data-tab="tutors" type="button">টিউটররা <span class="count" id="count-tutors"></span></button>
+          <button class="admin-tab" data-tab="offers" type="button">অফারসমূহ <span class="count" id="count-offers"></span></button>
+          <button class="admin-tab" data-tab="requests" type="button">অনুরোধসমূহ <span class="count" id="count-requests"></span></button>
+          <button class="admin-tab" data-tab="settings" type="button">সেটিংস</button>
+        </div>
+      </aside>
+      <div class="admin-main">
+        <div class="admin-head">
+          <div>
+            <h1>অ্যাডমিন প্যানেল</h1>
+            <p class="lead">টিউটর, অফার ও অনুরোধ — সবকিছু এক জায়গা থেকে দেখুন ও পরিচালনা করুন।</p>
+          </div>
+          <div class="admin-head-actions">
+            <a class="btn secondary" href="index.html">সাইট দেখুন</a>
+            <button class="btn secondary" id="logout-btn" type="button">লগআউট</button>
+          </div>
+        </div>
+        <p class="muted" id="save-note"></p>
 
     <!-- ড্যাশবোর্ড -->
     <section id="tab-dashboard" class="admin-tab-panel">
@@ -72,13 +82,17 @@
         <div class="stat-card"><div class="stat-num" id="stat-available">—</div><div class="stat-label">উপলব্ধ টিউটর</div></div>
       </div>
 
-      <h2>সাম্প্রতিক অফার</h2>
-      <div id="recent-offers"><p class="empty">লোড হচ্ছে…</p></div>
-      <p><a href="#" id="goto-offers">সব অফার দেখুন →</a></p>
+      <div class="admin-panel-card">
+        <h2>সাম্প্রতিক অফার</h2>
+        <div id="recent-offers"><p class="empty">লোড হচ্ছে…</p></div>
+        <p><a href="#" id="goto-offers">সব অফার দেখুন →</a></p>
+      </div>
 
-      <h2>সাম্প্রতিক অনুরোধ</h2>
-      <div id="recent-requests"><p class="empty">লোড হচ্ছে…</p></div>
-      <p><a href="#" id="goto-requests">সব অনুরোধ দেখুন →</a></p>
+      <div class="admin-panel-card">
+        <h2>সাম্প্রতিক অনুরোধ</h2>
+        <div id="recent-requests"><p class="empty">লোড হচ্ছে…</p></div>
+        <p><a href="#" id="goto-requests">সব অনুরোধ দেখুন →</a></p>
+      </div>
     </section>
 
     <!-- টিউটররা -->
@@ -118,7 +132,7 @@
       <div style="margin:16px 0">
         <button class="btn" id="add-offer-btn" type="button">+ অফার যোগ করুন</button>
       </div>
-      <div class="form-card" id="add-offer-form-wrap" style="margin:0 0 20px" hidden>
+      <div class="form-card" id="add-offer-form-wrap" hidden>
         <h2 style="margin-top:0">নতুন টিউশন অফার যোগ করুন</h2>
         <p class="lead">এই ফর্ম থেকে পোস্ট করা অফার সাথে সাথে অফার তালিকায় দেখা যাবে।</p>
         <div class="notice" id="add-offer-notice" hidden></div>
@@ -264,6 +278,8 @@
         <p class="muted">পাসকোডটি এই ব্রাউজারে সংরক্ষিত হয়। অন্য ব্রাউজার/ডিভাইসে ডিফল্ট পাসকোড <strong>admin123</strong> কাজ করবে।</p>
       </div>
     </section>
+      </div>
+    </div>
   </div>
 </main>
 

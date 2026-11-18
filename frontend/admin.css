@@ -1,0 +1,244 @@
+/* ---------- অ্যাডমিন প্যানেল — আধুনিক ডিজাইন (শুধু admin.html-এ লোড হয়) ----------
+   সাইটের সবুজ/টিল রঙের সাথে মিলিয়ে, নরম ছায়া, গোল কোণা ও পরিষ্কার
+   টাইপোগ্রাফি। কোনো বাইরের ফন্ট বা CDN নেই — সবকিছু লোকাল। */
+
+.admin-container { max-width: 1240px; }
+
+/* ---------- লেআউট: সাইডবার + কনটেন্ট ---------- */
+.admin-layout {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  margin-top: 8px;
+}
+.admin-main { min-width: 0; }
+.admin-main > section { margin-top: 20px; }
+
+/* ---------- সাইডবার (ট্যাব মেনু) ---------- */
+.admin-sidebar { position: sticky; top: 76px; }
+.admin-tabs {
+  flex-direction: column;
+  gap: 4px;
+  flex-wrap: nowrap;
+  border-bottom: none;
+  margin: 0;
+  padding: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+.admin-tab {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 11px 14px;
+  margin-bottom: 0;
+  border-bottom: none;
+  border-radius: 10px;
+  color: #374151;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.admin-tab:hover { background: #f0fdfa; color: var(--primary); }
+.admin-tab.active { background: var(--primary); color: #fff; }
+.admin-tab.active:hover { background: var(--primary-dark); }
+.admin-tab .count {
+  background: #f3f4f6;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.admin-tab.active .count { background: rgba(255, 255, 255, 0.22); color: #d1fae5; }
+
+/* ---------- প্যানেল হেডার ---------- */
+.admin-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, #0f766e, #155e75);
+  color: #fff;
+  border-radius: 18px;
+  padding: 26px 28px;
+  box-shadow: 0 4px 16px rgba(15, 118, 110, 0.28);
+}
+.admin-head h1 { color: #fff; margin-bottom: 4px; }
+.admin-head .lead { color: #d1fae5; margin: 0; }
+.admin-head-actions { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 4px; }
+.admin-head .btn.secondary { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }
+.admin-main #save-note { margin: 14px 2px 0; }
+
+/* ---------- স্ট্যাট কার্ড ---------- */
+.stat-grid { gap: 16px; }
+.stat-card {
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.05);
+  padding: 20px 18px;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 16px 36px rgba(15, 23, 42, 0.10);
+}
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: var(--primary);
+}
+.stat-card:nth-child(2)::before { background: #f59e0b; }
+.stat-card:nth-child(3)::before { background: #0284c7; }
+.stat-card:nth-child(4)::before { background: #7c3aed; }
+.stat-card:nth-child(5)::before { background: #db2777; }
+.stat-card:nth-child(6)::before { background: #059669; }
+.stat-num { font-size: 2.2rem; }
+
+/* ---------- ড্যাশবোর্ড কার্ড ---------- */
+.admin-panel-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.05);
+  padding: 20px 22px;
+  margin-top: 20px;
+}
+.admin-panel-card h2 { margin: 0 0 12px; }
+.admin-panel-card > p:last-child { margin-bottom: 0; }
+
+.recent-item {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 10px 0;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.recent-item:hover { border-left-color: var(--accent); box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06); }
+
+/* ---------- ফিল্টার ও টেবিল ---------- */
+.admin-main .filters {
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.05);
+  padding: 18px;
+  margin-top: 0;
+}
+.admin-main .table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.05);
+  overflow-x: auto;
+}
+.admin-main .admin-table { border: none; border-radius: 0; }
+.admin-table thead th {
+  background: #f0fdfa;
+  color: var(--primary-dark);
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+  padding: 12px 14px;
+}
+.admin-table th, .admin-table td { padding: 12px 14px; }
+.admin-table tbody tr { transition: background 0.12s ease; }
+.admin-table tbody tr:nth-child(even) { background: #fafafa; }
+.admin-table tbody tr:hover { background: #f0fdfa; }
+
+/* ---------- ছোট বোতাম ---------- */
+.btn-small {
+  border-radius: 8px;
+  padding: 6px 13px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.10);
+  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+.btn-small:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(15, 23, 42, 0.14); }
+.btn-small.secondary { border-width: 1.5px; }
+
+/* ---------- অ্যাডমিনের ফর্ম কার্ড ---------- */
+.admin-main .form-card {
+  max-width: none;
+  margin: 0;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+#add-offer-form-wrap { margin-bottom: 20px; }
+#admin-offer-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 18px;
+}
+#admin-offer-form .field { margin-bottom: 16px; }
+#admin-offer-form .field:has(> .checkbox-group),
+#admin-offer-form .field:has(textarea),
+#admin-offer-form button[type="submit"] { grid-column: 1 / -1; }
+#admin-offer-form button[type="submit"] { margin-top: 4px; }
+.checkbox-group label {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+.checkbox-group label:has(input:checked) {
+  background: #f0fdfa;
+  border-color: var(--primary);
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+/* ---------- লগইন ---------- */
+.admin-login {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0 32px;
+}
+.admin-login .form-card {
+  width: 100%;
+  max-width: 440px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 20px 48px rgba(15, 23, 42, 0.12);
+}
+.admin-login-head {
+  background: linear-gradient(135deg, #0f766e, #155e75);
+  color: #fff;
+  text-align: center;
+  padding: 32px 24px 26px;
+}
+.admin-login-head h1 { color: #fff; font-size: 1.5rem; margin: 0 0 6px; }
+.admin-login-head p { color: #d1fae5; margin: 0; font-size: 0.98rem; }
+.admin-login-body { padding: 24px 24px 26px; }
+.admin-login-body .notice { margin-top: 0; }
+
+/* ---------- রেসপন্সিভ ---------- */
+@media (max-width: 900px) {
+  .admin-layout { grid-template-columns: 1fr; gap: 16px; }
+  .admin-sidebar { position: static; }
+  .admin-tabs {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 8px;
+  }
+  .admin-tab { flex: 0 0 auto; width: auto; white-space: nowrap; }
+  .admin-head { padding: 20px; }
+  #admin-offer-form { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .stat-num { font-size: 1.7rem; }
+  .admin-login { padding: 24px 0; }
+  .admin-panel-card { padding: 16px; }
+}
