@@ -76,7 +76,7 @@
 .admin-main #save-note { margin: 14px 2px 0; }
 
 /* ---------- স্ট্যাট কার্ড ---------- */
-.stat-grid { gap: 16px; }
+.stat-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .stat-card {
   border-radius: 16px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.05);
@@ -103,6 +103,9 @@
 .stat-card:nth-child(5)::before { background: #db2777; }
 .stat-card:nth-child(6)::before { background: #059669; }
 .stat-num { font-size: 2.2rem; }
+
+/* মিডিয়া ফি ব্যাজ যাতে এক লাইনে থাকে */
+.badge.media-yes, .badge.media-no { white-space: nowrap; }
 
 /* ---------- ড্যাশবোর্ড কার্ড ---------- */
 .admin-panel-card {
