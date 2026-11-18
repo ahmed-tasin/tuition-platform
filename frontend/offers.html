@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>টিউশন অফার — টিউশন প্লাটফর্ম</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <nav class="nav">
+    <a class="logo" href="index.html">টিউশন<span>প্লাটফর্ম</span></a>
+    <div class="nav-links">
+      <a href="index.html">হোম</a>
+      <a href="tutors.html">টিউটর খুঁজুন</a>
+      <a href="offers.html" class="active">টিউশন অফার</a>
+      <a href="request.html">টিউটর চাই</a>
+      <a href="register.html">টিউটর হিসেবে যোগ দিন</a>
+    </div>
+  </nav>
+</header>
+
+<main class="container">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div>
+      <h1 style="margin-bottom:0">টিউশন অফার</h1>
+      <p class="lead">অভিভাবক ও শিক্ষার্থীদের পোস্ট করা টিউশনির অফার দেখুন — পছন্দমতো অফারে আবেদন করুন।</p>
+    </div>
+    <a class="btn accent" href="post-offer.html">+ অফার পোস্ট করুন</a>
+  </div>
+
+  <div class="filters">
+    <div>
+      <label for="f-q">খুঁজুন (এলাকা / বিষয় / বিভাগ)</label>
+      <input id="f-q" type="search" placeholder="যেমন: ময়মনসিংহ, পদার্থবিজ্ঞান">
+    </div>
+    <div>
+      <label for="f-subject">বিষয়</label>
+      <select id="f-subject"></select>
+    </div>
+    <div>
+      <label for="f-class">শ্রেণি</label>
+      <input id="f-class" type="text" placeholder="যেমন: SSC 27, HSC 26">
+    </div>
+    <div>
+      <label for="f-location">এলাকা</label>
+      <input id="f-location" type="text" placeholder="যেমন: ময়মনসিংহ, ধানমন্ডি">
+    </div>
+    <div>
+      <label for="f-minSalary">সর্বনিম্ন বেতন (টাকা)</label>
+      <input id="f-minSalary" type="number" min="0" placeholder="যেমন: 3000">
+    </div>
+    <div>
+      <label for="f-gender">শিক্ষক</label>
+      <select id="f-gender">
+        <option value="">সবাই</option>
+        <option value="male">শুধু পুরুষ</option>
+        <option value="female">শুধু মহিলা</option>
+        <option value="any">যেকোনো</option>
+      </select>
+    </div>
+    <button class="btn secondary" id="clear-filters" type="button">ফিল্টার মুছুন</button>
+  </div>
+
+  <p class="muted" id="result-count" style="margin-top:16px"></p>
+  <div class="offer-grid" id="offer-list">
+    <p class="empty">লোড হচ্ছে…</p>
+  </div>
+
+  <p style="margin-top:24px" class="muted">আপনার বাসায় পড়ানোর জন্য টিউটর দরকার? <a href="post-offer.html">এখনই অফার পোস্ট করুন</a> — সম্পূর্ণ বিনামূল্যে।</p>
+</main>
+
+<footer>টিউশন প্লাটফর্ম — ঢাকা, বাংলাদেশ</footer>
+
+<script src="app.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  fillSelect(document.getElementById("f-subject"), SUBJECTS, "সব বিষয়");
+
+  const inputs = {
+    q: document.getElementById("f-q"),
+    subject: document.getElementById("f-subject"),
+    class: document.getElementById("f-class"),
+    location: document.getElementById("f-location"),
+    minSalary: document.getElementById("f-minSalary"),
+    gender: document.getElementById("f-gender")
+  };
+  inputs.q.value = params.get("q") || "";
+  inputs.subject.value = params.get("subject") || "";
+  inputs.class.value = params.get("class") || "";
+  inputs.location.value = params.get("location") || "";
+  inputs.minSalary.value = params.get("minSalary") || "";
+  inputs.gender.value = params.get("gender") || "";
+
+  let debounce;
+  function applyFilters() {
+    const filters = {
+      q: inputs.q.value.trim(),
+      subject: inputs.subject.value,
+      class: inputs.class.value.trim(),
+      location: inputs.location.value.trim(),
+      minSalary: inputs.minSalary.value.trim(),
+      gender: inputs.gender.value
+    };
+    fetchOffers(filters).then((offers) => {
+      renderOfferCards(document.getElementById("offer-list"), offers);
+      document.getElementById("result-count").textContent = offers.length + "টি অফার পাওয়া গেছে";
+    });
+  }
+
+  Object.values(inputs).forEach((el) => {
+    el.addEventListener("input", () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(applyFilters, 250);
+    });
+    el.addEventListener("change", applyFilters);
+  });
+
+  document.getElementById("clear-filters").addEventListener("click", () => {
+    Object.values(inputs).forEach((el) => (el.value = ""));
+    applyFilters();
+  });
+
+  applyFilters();
+</script>
+</body>
+</html>

@@ -198,3 +198,168 @@ function showNotice(el, message, type) {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+
+// ---------- টিউশন অফার ----------
+// ব্যাকএন্ড না পাওয়া গেলে ব্যবহারের জন্য বিল্ট-ইন অফার তালিকা (সার্ভারের seed-এর মতোই)
+const FALLBACK_OFFERS = [
+  { id: 1, teacherGender: "male", preferredDepartment: "পদার্থবিজ্ঞান", location: "Stadium Gate, ময়মনসিংহ সদর", class: "SSC 27", subjects: ["পদার্থবিজ্ঞান", "জীববিজ্ঞান", "রসায়ন"], studentCount: 1, salary: 3000, daysPerWeek: 3, durationPerDay: "১ ঘণ্টা+", mediaFee: "প্রযোজ্য", posterName: "আরিফের বাবা", phone: "01711-234511", notes: "ইনবক্সে শর্ট সিভি, অভিজ্ঞতা, স্টুডেন্ট আইডি কার্ড ও নম্বর দিয়ে মেসেজ দিন।", status: "খোলা", createdAt: "2026-11-18T10:00:00.000Z" },
+  { id: 2, teacherGender: "female", preferredDepartment: "ইংরেজি", location: "ধানমন্ডি ২৭, ঢাকা", class: "HSC 26", subjects: ["ইংরেজি", "আইসিটি"], studentCount: 2, salary: 5000, daysPerWeek: 4, durationPerDay: "১.৫ ঘণ্টা", mediaFee: "প্রযোজ্য", posterName: "নুসরাতের মা", phone: "01711-234512", notes: "দুই বোন একসাথে পড়বে। ইংরেজি গ্রামার ও রাইটিংয়ে দক্ষ শিক্ষিকা চাই। ইনবক্সে সিভি ও অভিজ্ঞতা পাঠান।", status: "খোলা", createdAt: "2026-11-18T10:05:00.000Z" },
+  { id: 3, teacherGender: "any", preferredDepartment: "গণিত", location: "মিরপুর ১০, ঢাকা", class: "৯ম শ্রেণি", subjects: ["গণিত", "পদার্থবিজ্ঞান"], studentCount: 1, salary: 4000, daysPerWeek: 3, durationPerDay: "১ ঘণ্টা", mediaFee: "প্রযোজ্য নয়", posterName: "সাব্বিরের বাবা", phone: "01711-234513", notes: "সপ্তাহে ৩ দিন, বিকাল ৪টা থেকে। গণিতে দুর্বল অধ্যায়গুলোতে বিশেষ যত্ন নিতে হবে।", status: "খোলা", createdAt: "2026-11-18T10:10:00.000Z" },
+  { id: 4, teacherGender: "male", preferredDepartment: "রসায়ন", location: "উত্তরা সেক্টর ৪, ঢাকা", class: "একাদশ শ্রেণি", subjects: ["রসায়ন", "জীববিজ্ঞান"], studentCount: 1, salary: 6000, daysPerWeek: 5, durationPerDay: "১ ঘণ্টা", mediaFee: "প্রযোজ্য", posterName: "মাহির মা", phone: "01711-234514", notes: "মেডিকেল ভর্তি পরীক্ষার প্রস্তুতিসহ পড়াতে হবে। ইনবক্সে শর্ট সিভি ও স্টুডেন্ট আইডি কার্ড পাঠান।", status: "খোলা", createdAt: "2026-11-18T10:15:00.000Z" },
+  { id: 5, teacherGender: "female", preferredDepartment: "বাংলা", location: "গাঙ্গিনার পাড়, ময়মনসিংহ সদর", class: "৬ষ্ঠ শ্রেণি", subjects: ["বাংলা", "ইংরেজি", "গণিত"], studentCount: 1, salary: 2500, daysPerWeek: 4, durationPerDay: "১ ঘণ্টা", mediaFee: "প্রযোজ্য নয়", posterName: "আয়েশার মা", phone: "01711-234515", notes: "ছোট মেয়ের জন্য ধৈর্যশীল শিক্ষিকা চাই। হাতের লেখা ও বানানে বিশেষ যত্ন নিতে হবে।", status: "খোলা", createdAt: "2026-11-18T10:20:00.000Z" }
+];
+
+function genderLabel(gender) {
+  if (gender === "male") return "শুধু পুরুষ";
+  if (gender === "female") return "শুধু মহিলা";
+  return "যেকোনো";
+}
+
+function localOffers() {
+  try {
+    return JSON.parse(localStorage.getItem("tp_local_offers") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function allLocalOffers() {
+  const local = localOffers();
+  const fallbackIds = new Set(FALLBACK_OFFERS.map((o) => String(o.id)));
+  const merged = [...FALLBACK_OFFERS];
+  local.forEach((o) => {
+    if (!fallbackIds.has(String(o.id))) merged.push(o);
+  });
+  return merged;
+}
+
+function filterOffers(offers, f) {
+  return offers.filter((o) => {
+    if (f.subject && !o.subjects.includes(f.subject)) return false;
+    if (f.class && !o.class.toLowerCase().includes(f.class.toLowerCase())) return false;
+    if (f.location && !o.location.toLowerCase().includes(f.location.toLowerCase())) return false;
+    if (f.minSalary && o.salary < Number(f.minSalary)) return false;
+    if (f.gender && o.teacherGender !== f.gender && o.teacherGender !== "any") return false;
+    if (f.q) {
+      const hay = [o.location, o.class, o.preferredDepartment, o.posterName, o.notes, ...o.subjects].join(" ").toLowerCase();
+      if (!hay.includes(f.q.toLowerCase())) return false;
+    }
+    return true;
+  });
+}
+
+async function fetchOffers(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v) params.set(k, v);
+  });
+  try {
+    const res = await fetch(`${API_BASE}/offers?${params.toString()}`);
+    if (!res.ok) throw new Error("API error");
+    const fromApi = await res.json();
+    // API-তে না থাকা স্থানীয় অফারগুলোও দেখান (অফলাইন ফলব্যাক)
+    const apiIds = new Set(fromApi.map((o) => String(o.id)));
+    const extra = localOffers().filter((o) => !apiIds.has(String(o.id)));
+    return filterOffers([...fromApi, ...extra], filters);
+  } catch (e) {
+    return filterOffers(allLocalOffers(), filters);
+  }
+}
+
+async function fetchOffer(id) {
+  try {
+    const res = await fetch(`${API_BASE}/offers/${id}`);
+    if (!res.ok) throw new Error("API error");
+    return await res.json();
+  } catch (e) {
+    return allLocalOffers().find((o) => String(o.id) === String(id)) || null;
+  }
+}
+
+function offerCardHTML(o) {
+  const genderBadge = o.teacherGender === "male"
+    ? '<span class="badge gender-male">👨 শুধু পুরুষ</span>'
+    : o.teacherGender === "female"
+    ? '<span class="badge gender-female">👩 শুধু মহিলা</span>'
+    : '<span class="badge gender-any">যেকোনো</span>';
+  const mediaBadge = o.mediaFee === "প্রযোজ্য"
+    ? '<span class="badge media-yes">মিডিয়া ফি প্রযোজ্য</span>'
+    : '<span class="badge media-no">মিডিয়া ফি প্রযোজ্য নয়</span>';
+  return `
+  <article class="offer-card" data-id="${o.id}" tabindex="0">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      ${genderBadge}
+      ${mediaBadge}
+    </div>
+    <div class="offer-title">📍 ${escapeHtml(o.location)}</div>
+    <p class="offer-line"><strong>শ্রেণি:</strong> ${escapeHtml(o.class)}</p>
+    <p style="margin:6px 0">${o.subjects.map((s) => `<span class="tag">${escapeHtml(s)}</span>`).join("")}</p>
+    <p class="offer-line"><strong>শিক্ষার্থী:</strong> ${o.studentCount} জন • <strong>সপ্তাহে:</strong> ${o.daysPerWeek} দিন • <strong>সময়:</strong> ${escapeHtml(o.durationPerDay)}</p>
+    ${o.preferredDepartment ? `<p class="offer-line"><strong>পছন্দের বিভাগ:</strong> ${escapeHtml(o.preferredDepartment)} বিভাগ</p>` : ""}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+      <span class="fee">৳${Number(o.salary).toLocaleString("bn-BD")}/মাস</span>
+      <span class="muted">বিস্তারিত দেখুন →</span>
+    </div>
+  </article>`;
+}
+
+function renderOfferCards(container, offers) {
+  if (!offers.length) {
+    container.innerHTML = '<p class="empty">কোনো অফার পাওয়া যায়নি। ফিল্টার বদলে আবার চেষ্টা করুন।</p>';
+    return;
+  }
+  container.innerHTML = offers.map(offerCardHTML).join("");
+  container.querySelectorAll(".offer-card").forEach((card) => {
+    const open = () => openOfferModal(card.dataset.id);
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") open();
+    });
+  });
+}
+
+// ---------- অফারের বিস্তারিত মডাল ----------
+async function openOfferModal(id) {
+  const o = await fetchOffer(id);
+  if (!o) return;
+  const existing = document.querySelector(".modal-backdrop");
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal" role="dialog" aria-label="টিউশন অফারের বিস্তারিত">
+      <button class="modal-close" aria-label="বন্ধ করুন">✕</button>
+      <h2 style="margin-top:0">📍 ${escapeHtml(o.location)}</h2>
+      <p>
+        <span class="badge ${o.teacherGender === "male" ? "gender-male" : o.teacherGender === "female" ? "gender-female" : "gender-any"}">${o.teacherGender === "male" ? "👨 শুধু পুরুষ" : o.teacherGender === "female" ? "👩 শুধু মহিলা" : "যেকোনো"}</span>
+        <span class="badge ${o.mediaFee === "প্রযোজ্য" ? "media-yes" : "media-no"}">মিডিয়া ফি ${escapeHtml(o.mediaFee)}</span>
+        <span class="badge available">${escapeHtml(o.status || "খোলা")}</span>
+      </p>
+      <p><strong>শ্রেণি:</strong> ${escapeHtml(o.class)}</p>
+      <p><strong>বিষয়:</strong> ${o.subjects.map((s) => `<span class="tag">${escapeHtml(s)}</span>`).join("")}</p>
+      ${o.preferredDepartment ? `<p><strong>পছন্দের বিভাগ:</strong> ${escapeHtml(o.preferredDepartment)} বিভাগের শিক্ষক অগ্রাধিকার পাবেন</p>` : ""}
+      <p><strong>শিক্ষার্থী:</strong> ${o.studentCount} জন</p>
+      <p><strong>সাপ্তাহিক রুটিন:</strong> সপ্তাহে ${o.daysPerWeek} দিন, প্রতিদিন ${escapeHtml(o.durationPerDay)}</p>
+      <p><strong>বেতন:</strong> <span class="fee">৳${Number(o.salary).toLocaleString("bn-BD")}/মাস</span></p>
+      ${o.posterName ? `<p><strong>পোস্ট করেছেন:</strong> ${escapeHtml(o.posterName)}</p>` : ""}
+      ${o.phone ? `<p><strong>ফোন:</strong> <a href="tel:${o.phone.replace(/[^0-9+]/g, "")}">${escapeHtml(o.phone)}</a></p>` : ""}
+      ${o.notes ? `<h3 style="margin-top:20px">কীভাবে আবেদন করবেন</h3><p>${escapeHtml(o.notes)}</p>` : ""}
+      <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
+        ${o.phone ? `<a class="btn" href="tel:${o.phone.replace(/[^0-9+]/g, "")}">ফোন করুন</a>` : ""}
+        <a class="btn secondary" href="register.html">টিউটর হিসেবে যোগ দিন</a>
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+  const close = () => backdrop.remove();
+  backdrop.querySelector(".modal-close").addEventListener("click", close);
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) close();
+  });
+  document.addEventListener("keydown", function esc(e) {
+    if (e.key === "Escape") {
+      close();
+      document.removeEventListener("keydown", esc);
+    }
+  });
+}

@@ -255,6 +255,30 @@ footer {
   font-size: 0.9rem;
 }
 
+/* ---------- Offer cards ---------- */
+.offer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.offer-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+.offer-card:hover { box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); }
+.offer-title { font-weight: 800; font-size: 1.1rem; margin: 10px 0 6px; }
+.offer-line { margin: 4px 0; }
+.badge.gender-male { background: #dbeafe; color: #1e40af; }
+.badge.gender-female { background: #fce7f3; color: #9d174d; }
+.badge.gender-any { background: #f3f4f6; color: #374151; }
+.badge.media-yes { background: #fef3c7; color: #92400e; }
+.badge.media-no { background: #d1fae5; color: #065f46; }
+
 @media (max-width: 600px) {
   h1 { font-size: 1.5rem; }
   .hero { padding: 28px 16px; }

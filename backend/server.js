@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, "data");
 const TUTORS_FILE = path.join(DATA_DIR, "tutors.json");
 const REQUESTS_FILE = path.join(DATA_DIR, "requests.json");
+const OFFERS_FILE = path.join(DATA_DIR, "offers.json");
 const FRONTEND_DIR = path.join(__dirname, "..", "frontend");
 
 app.use(express.json());
@@ -146,6 +147,86 @@ app.post("/api/requests", (req, res) => {
   requests.push(request);
   writeJson(REQUESTS_FILE, requests);
   res.status(201).json(request);
+});
+
+// ---------- Tuition offers (guardians / students post tuition jobs) ----------
+app.get("/api/offers", (req, res) => {
+  const { subject, class: cls, location, minSalary, gender, q } = req.query;
+  let offers = readJson(OFFERS_FILE, []);
+
+  if (subject) {
+    offers = offers.filter((o) => o.subjects.includes(subject));
+  }
+  if (cls) {
+    offers = offers.filter((o) => o.class.toLowerCase().includes(cls.toLowerCase()));
+  }
+  if (location) {
+    offers = offers.filter((o) => o.location.toLowerCase().includes(location.toLowerCase()));
+  }
+  if (minSalary) {
+    const min = Number(minSalary);
+    if (!Number.isNaN(min)) {
+      offers = offers.filter((o) => o.salary >= min);
+    }
+  }
+  if (gender) {
+    offers = offers.filter((o) => o.teacherGender === gender || o.teacherGender === "any");
+  }
+  if (q) {
+    const needle = q.toLowerCase();
+    offers = offers.filter((o) =>
+      [o.location, o.class, o.preferredDepartment, o.posterName, o.notes, ...o.subjects]
+        .join(" ")
+        .toLowerCase()
+        .includes(needle)
+    );
+  }
+
+  res.json(offers);
+});
+
+app.get("/api/offers/:id", (req, res) => {
+  const offers = readJson(OFFERS_FILE, []);
+  const offer = offers.find((o) => String(o.id) === String(req.params.id));
+  if (!offer) {
+    return res.status(404).json({ error: "অফার পাওয়া যায়নি" });
+  }
+  res.json(offer);
+});
+
+app.post("/api/offers", (req, res) => {
+  const body = req.body || {};
+  const required = ["location", "class", "subjects", "salary"];
+  const missing = required.filter(
+    (key) => body[key] === undefined || body[key] === "" || (Array.isArray(body[key]) && body[key].length === 0)
+  );
+  if (missing.length > 0) {
+    return res.status(400).json({ error: "এই তথ্যগুলো আবশ্যক: " + missing.join(", ") });
+  }
+
+  const offers = readJson(OFFERS_FILE, []);
+  const offer = {
+    id: nextId(offers),
+    teacherGender: ["male", "female", "any"].includes(body.teacherGender) ? body.teacherGender : "any",
+    preferredDepartment: body.preferredDepartment ? String(body.preferredDepartment).trim() : "",
+    location: String(body.location).trim(),
+    class: String(body.class).trim(),
+    subjects: Array.isArray(body.subjects) ? body.subjects : [body.subjects],
+    studentCount: Number(body.studentCount) || 1,
+    salary: Number(body.salary),
+    daysPerWeek: Number(body.daysPerWeek) || 3,
+    durationPerDay: body.durationPerDay ? String(body.durationPerDay).trim() : "১ ঘণ্টা",
+    mediaFee: body.mediaFee === "প্রযোজ্য নয়" ? "প্রযোজ্য নয়" : "প্রযোজ্য",
+    posterName: body.posterName ? String(body.posterName).trim() : "",
+    phone: body.phone ? String(body.phone).trim() : "",
+    notes: body.notes ? String(body.notes).trim() : "",
+    status: "খোলা",
+    createdAt: new Date().toISOString()
+  };
+
+  offers.push(offer);
+  writeJson(OFFERS_FILE, offers);
+  res.status(201).json(offer);
 });
 
 // ---------- Fallback: serve the frontend for any other route ----------
