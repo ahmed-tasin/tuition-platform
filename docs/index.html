@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>টিউশন প্লাটফর্ম — ঢাকার সেরা টিউটর খুঁজুন</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <nav class="nav">
+    <a class="logo" href="index.html">টিউশন<span>প্লাটফর্ম</span></a>
+    <div class="nav-links">
+      <a href="index.html" class="active">হোম</a>
+      <a href="tutors.html">টিউটর খুঁজুন</a>
+      <a href="request.html">টিউটর চাই</a>
+      <a href="register.html">টিউটর হিসেবে যোগ দিন</a>
+    </div>
+  </nav>
+</header>
+
+<main class="container">
+  <section class="hero">
+    <h1>আপনার সন্তানের জন্য সেরা টিউটর খুঁজুন</h1>
+    <p>ঢাকার যাচাইকৃত ও অভিজ্ঞ টিউটরদের সাথে সরাসরি যোগাযোগ করুন। গণিত থেকে ভর্তি পরীক্ষা — সব বিষয়ের টিউটর এক জায়গায়।</p>
+    <a class="btn accent" href="tutors.html">টিউটর খুঁজুন</a>
+    <a class="btn secondary" href="request.html" style="border-color:#fff;color:#fff;background:transparent">টিউটরের অনুরোধ করুন</a>
+  </section>
+
+  <form class="search-box" id="home-search">
+    <div>
+      <label for="subject">বিষয়</label>
+      <select id="subject" name="subject"></select>
+    </div>
+    <div>
+      <label for="class">শ্রেণি</label>
+      <select id="class" name="class"></select>
+    </div>
+    <div>
+      <label for="area">এলাকা</label>
+      <select id="area" name="area"></select>
+    </div>
+    <div>
+      <label for="maxFee">সর্বোচ্চ মাসিক ফি (টাকা)</label>
+      <input id="maxFee" name="maxFee" type="number" min="0" placeholder="যেমন: 6000">
+    </div>
+    <button class="btn" type="submit">খুঁজুন</button>
+  </form>
+
+  <h2>কীভাবে কাজ করে</h2>
+  <section class="steps">
+    <div class="step"><div class="step-num">১</div><h3>টিউটর খুঁজুন</h3><p>বিষয়, শ্রেণি, এলাকা ও বাজেট অনুযায়ী টিউটর খুঁজে নিন।</p></div>
+    <div class="step"><div class="step-num">২</div><h3>প্রোফাইল দেখুন</h3><p>শিক্ষাগত যোগ্যতা, অভিজ্ঞতা, ফি ও রিভিউ যাচাই করুন।</p></div>
+    <div class="step"><div class="step-num">৩</div><h3>অনুরোধ পাঠান</h3><p>ফোনে কথা বলুন অথবা অনুরোধ ফর্ম পূরণ করুন — আমরাই যোগাযোগ করিয়ে দিই।</p></div>
+  </section>
+
+  <h2>সেরা টিউটরগণ</h2>
+  <p class="muted">সর্বোচ্চ রেটিং পাওয়া টিউটরদের তালিকা</p>
+  <div class="tutor-grid" id="featured-tutors">
+    <p class="empty">লোড হচ্ছে…</p>
+  </div>
+  <p style="margin-top:16px"><a class="btn secondary" href="tutors.html">সব টিউটর দেখুন →</a></p>
+</main>
+
+<footer>টিউশন প্লাটফর্ম — ঢাকা, বাংলাদেশ • অভিভাবক ও টিউটরের সংযোগের বিশ্বস্ত মাধ্যম</footer>
+
+<script src="app.js"></script>
+<script>
+  fillSelect(document.getElementById("subject"), SUBJECTS, "সব বিষয়");
+  fillSelect(document.getElementById("class"), CLASSES, "সব শ্রেণি");
+  fillSelect(document.getElementById("area"), AREAS, "সব এলাকা");
+
+  document.getElementById("home-search").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    ["subject", "class", "area", "maxFee"].forEach((key) => {
+      const value = document.getElementById(key).value.trim();
+      if (value) params.set(key, value);
+    });
+    window.location.href = "tutors.html" + (params.toString() ? "?" + params.toString() : "");
+  });
+
+  fetchTutors().then((tutors) => {
+    const featured = [...tutors].sort((a, b) => b.rating - a.rating).slice(0, 3);
+    renderTutorCards(document.getElementById("featured-tutors"), featured);
+  });
+</script>
+</body>
+</html>
