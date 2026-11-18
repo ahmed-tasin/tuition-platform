@@ -1,1 +1,16 @@
-{"dependencies":{"express":"^4.19.2"},"description":"Backend for the Tuition Platform — a tutor-student tuition media platform for Bangladesh","license":"MIT","main":"server.js","name":"tuition-platform-backend","scripts":{"start":"node server.js"},"version":"1.0.0"}
+{
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.19.2",
+    "mongoose": "^8.24.10"
+  },
+  "description": "Backend for the Tuition Platform — a tutor-student tuition media platform for Bangladesh",
+  "license": "MIT",
+  "main": "server.js",
+  "name": "tuition-platform-backend",
+  "scripts": {
+    "seed:mongo": "node scripts/seed-mongo.js",
+    "start": "node server.js"
+  },
+  "version": "1.0.0"
+}

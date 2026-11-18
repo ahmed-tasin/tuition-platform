@@ -1,6 +1,10 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
+require("dotenv").config();
+
+const { connectMongo, isMongoReady } = require("./db");
+const { Tutor, Offer, Request, cleanDoc } = require("./models");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,7 +16,28 @@ const OFFERS_FILE = path.join(DATA_DIR, "offers.json");
 const FRONTEND_DIR = path.join(__dirname, "..", "frontend");
 
 app.use(express.json());
+
+// CORS: the frontend on GitHub Pages calls this API cross-origin when the
+// backend is hosted (e.g. on Render). Allow it; the API has no auth.
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 app.use(express.static(FRONTEND_DIR));
+
+// ---------- Storage layer ----------
+// MongoDB is used when connected; otherwise the JSON files are used exactly
+// as before. Every route reads the full list and saves it back, so the two
+// stores stay interchangeable.
+const STORES = {
+  tutors: { Model: Tutor, file: TUTORS_FILE },
+  offers: { Model: Offer, file: OFFERS_FILE },
+  requests: { Model: Request, file: REQUESTS_FILE }
+};
 
 function readJson(file, fallback) {
   try {
@@ -27,19 +52,38 @@ function writeJson(file, data) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\n", "utf8");
 }
 
+async function loadAll(kind) {
+  const { Model, file } = STORES[kind];
+  if (isMongoReady()) {
+    const docs = await Model.find().sort({ id: 1 }).lean();
+    return docs.map(cleanDoc);
+  }
+  return readJson(file, []);
+}
+
+async function saveAll(kind, items) {
+  const { Model, file } = STORES[kind];
+  if (isMongoReady()) {
+    await Model.deleteMany({});
+    if (items.length) await Model.insertMany(items);
+    return;
+  }
+  writeJson(file, items);
+}
+
 function nextId(items) {
   return items.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1;
 }
 
 // ---------- Health ----------
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", service: "tuition-platform", time: new Date().toISOString() });
+  res.json({ status: "ok", service: "tuition-platform", db: isMongoReady() ? "mongo" : "json", time: new Date().toISOString() });
 });
 
 // ---------- Tutors ----------
-app.get("/api/tutors", (req, res) => {
+app.get("/api/tutors", async (req, res) => {
   const { subject, class: cls, area, maxFee, q } = req.query;
-  let tutors = readJson(TUTORS_FILE, []);
+  let tutors = await loadAll("tutors");
 
   if (subject) {
     tutors = tutors.filter((t) => t.subjects.includes(subject));
@@ -69,8 +113,8 @@ app.get("/api/tutors", (req, res) => {
   res.json(tutors);
 });
 
-app.get("/api/tutors/:id", (req, res) => {
-  const tutors = readJson(TUTORS_FILE, []);
+app.get("/api/tutors/:id", async (req, res) => {
+  const tutors = await loadAll("tutors");
   const tutor = tutors.find((t) => String(t.id) === String(req.params.id));
   if (!tutor) {
     return res.status(404).json({ error: "টিউটর পাওয়া যায়নি" });
@@ -78,7 +122,7 @@ app.get("/api/tutors/:id", (req, res) => {
   res.json(tutor);
 });
 
-app.post("/api/tutors", (req, res) => {
+app.post("/api/tutors", async (req, res) => {
   const body = req.body || {};
   const required = ["name", "phone", "university", "subjects", "classes", "areas", "monthlyFee"];
   const missing = required.filter(
@@ -88,7 +132,7 @@ app.post("/api/tutors", (req, res) => {
     return res.status(400).json({ error: "এই তথ্যগুলো আবশ্যক: " + missing.join(", ") });
   }
 
-  const tutors = readJson(TUTORS_FILE, []);
+  const tutors = await loadAll("tutors");
   const tutor = {
     id: nextId(tutors),
     name: String(body.name).trim(),
@@ -109,14 +153,14 @@ app.post("/api/tutors", (req, res) => {
   };
 
   tutors.push(tutor);
-  writeJson(TUTORS_FILE, tutors);
+  await saveAll("tutors", tutors);
   res.status(201).json(tutor);
 });
 
 const TUTOR_PATCH_FIELDS = ["name", "university", "department", "subjects", "classes", "areas", "monthlyFee", "experienceYears", "phone", "about", "available"];
 
-app.patch("/api/tutors/:id", (req, res) => {
-  const tutors = readJson(TUTORS_FILE, []);
+app.patch("/api/tutors/:id", async (req, res) => {
+  const tutors = await loadAll("tutors");
   const tutor = tutors.find((t) => String(t.id) === String(req.params.id));
   if (!tutor) {
     return res.status(404).json({ error: "টিউটর পাওয়া যায়নি" });
@@ -134,27 +178,27 @@ app.patch("/api/tutors/:id", (req, res) => {
       tutor[key] = String(body[key]).trim();
     }
   });
-  writeJson(TUTORS_FILE, tutors);
+  await saveAll("tutors", tutors);
   res.json(tutor);
 });
 
-app.delete("/api/tutors/:id", (req, res) => {
-  const tutors = readJson(TUTORS_FILE, []);
+app.delete("/api/tutors/:id", async (req, res) => {
+  const tutors = await loadAll("tutors");
   const index = tutors.findIndex((t) => String(t.id) === String(req.params.id));
   if (index === -1) {
     return res.status(404).json({ error: "টিউটর পাওয়া যায়নি" });
   }
   const [removed] = tutors.splice(index, 1);
-  writeJson(TUTORS_FILE, tutors);
+  await saveAll("tutors", tutors);
   res.json({ deleted: true, id: removed.id });
 });
 
 // ---------- Tutor requests (students / parents) ----------
-app.get("/api/requests", (req, res) => {
-  res.json(readJson(REQUESTS_FILE, []));
+app.get("/api/requests", async (req, res) => {
+  res.json(await loadAll("requests"));
 });
 
-app.post("/api/requests", (req, res) => {
+app.post("/api/requests", async (req, res) => {
   const body = req.body || {};
   const required = ["studentName", "phone", "class", "subjects", "area"];
   const missing = required.filter(
@@ -164,7 +208,7 @@ app.post("/api/requests", (req, res) => {
     return res.status(400).json({ error: "এই তথ্যগুলো আবশ্যক: " + missing.join(", ") });
   }
 
-  const requests = readJson(REQUESTS_FILE, []);
+  const requests = await loadAll("requests");
   const request = {
     id: nextId(requests),
     studentName: String(body.studentName).trim(),
@@ -181,15 +225,15 @@ app.post("/api/requests", (req, res) => {
   };
 
   requests.push(request);
-  writeJson(REQUESTS_FILE, requests);
+  await saveAll("requests", requests);
   res.status(201).json(request);
 });
 
 const REQUEST_STATUSES = ["নতুন", "যোগাযোগ হয়েছে", "সম্পন্ন"];
 const REQUEST_PATCH_FIELDS = ["studentName", "guardianName", "phone", "class", "subjects", "area", "budget", "preferredTime", "notes", "status"];
 
-app.get("/api/requests/:id", (req, res) => {
-  const requests = readJson(REQUESTS_FILE, []);
+app.get("/api/requests/:id", async (req, res) => {
+  const requests = await loadAll("requests");
   const request = requests.find((r) => String(r.id) === String(req.params.id));
   if (!request) {
     return res.status(404).json({ error: "অনুরোধ পাওয়া যায়নি" });
@@ -197,8 +241,8 @@ app.get("/api/requests/:id", (req, res) => {
   res.json(request);
 });
 
-app.patch("/api/requests/:id", (req, res) => {
-  const requests = readJson(REQUESTS_FILE, []);
+app.patch("/api/requests/:id", async (req, res) => {
+  const requests = await loadAll("requests");
   const request = requests.find((r) => String(r.id) === String(req.params.id));
   if (!request) {
     return res.status(404).json({ error: "অনুরোধ পাওয়া যায়নি" });
@@ -217,25 +261,25 @@ app.patch("/api/requests/:id", (req, res) => {
       request[key] = String(body[key]).trim();
     }
   });
-  writeJson(REQUESTS_FILE, requests);
+  await saveAll("requests", requests);
   res.json(request);
 });
 
-app.delete("/api/requests/:id", (req, res) => {
-  const requests = readJson(REQUESTS_FILE, []);
+app.delete("/api/requests/:id", async (req, res) => {
+  const requests = await loadAll("requests");
   const index = requests.findIndex((r) => String(r.id) === String(req.params.id));
   if (index === -1) {
     return res.status(404).json({ error: "অনুরোধ পাওয়া যায়নি" });
   }
   const [removed] = requests.splice(index, 1);
-  writeJson(REQUESTS_FILE, requests);
+  await saveAll("requests", requests);
   res.json({ deleted: true, id: removed.id });
 });
 
 // ---------- Tuition offers (guardians / students post tuition jobs) ----------
-app.get("/api/offers", (req, res) => {
+app.get("/api/offers", async (req, res) => {
   const { subject, class: cls, location, minSalary, gender, q } = req.query;
-  let offers = readJson(OFFERS_FILE, []);
+  let offers = await loadAll("offers");
 
   if (subject) {
     offers = offers.filter((o) => o.subjects.includes(subject));
@@ -268,8 +312,8 @@ app.get("/api/offers", (req, res) => {
   res.json(offers);
 });
 
-app.get("/api/offers/:id", (req, res) => {
-  const offers = readJson(OFFERS_FILE, []);
+app.get("/api/offers/:id", async (req, res) => {
+  const offers = await loadAll("offers");
   const offer = offers.find((o) => String(o.id) === String(req.params.id));
   if (!offer) {
     return res.status(404).json({ error: "অফার পাওয়া যায়নি" });
@@ -277,7 +321,7 @@ app.get("/api/offers/:id", (req, res) => {
   res.json(offer);
 });
 
-app.post("/api/offers", (req, res) => {
+app.post("/api/offers", async (req, res) => {
   const body = req.body || {};
   const required = ["location", "class", "subjects", "salary"];
   const missing = required.filter(
@@ -287,7 +331,7 @@ app.post("/api/offers", (req, res) => {
     return res.status(400).json({ error: "এই তথ্যগুলো আবশ্যক: " + missing.join(", ") });
   }
 
-  const offers = readJson(OFFERS_FILE, []);
+  const offers = await loadAll("offers");
   const offer = {
     id: nextId(offers),
     teacherGender: ["male", "female", "any"].includes(body.teacherGender) ? body.teacherGender : "any",
@@ -308,15 +352,15 @@ app.post("/api/offers", (req, res) => {
   };
 
   offers.push(offer);
-  writeJson(OFFERS_FILE, offers);
+  await saveAll("offers", offers);
   res.status(201).json(offer);
 });
 
 const OFFER_STATUSES = ["খোলা", "বন্ধ"];
 const OFFER_PATCH_FIELDS = ["teacherGender", "preferredDepartment", "location", "class", "subjects", "studentCount", "salary", "daysPerWeek", "durationPerDay", "mediaFee", "posterName", "phone", "notes", "status"];
 
-app.patch("/api/offers/:id", (req, res) => {
-  const offers = readJson(OFFERS_FILE, []);
+app.patch("/api/offers/:id", async (req, res) => {
+  const offers = await loadAll("offers");
   const offer = offers.find((o) => String(o.id) === String(req.params.id));
   if (!offer) {
     return res.status(404).json({ error: "অফার পাওয়া যায়নি" });
@@ -338,18 +382,18 @@ app.patch("/api/offers/:id", (req, res) => {
       offer[key] = String(body[key]).trim();
     }
   });
-  writeJson(OFFERS_FILE, offers);
+  await saveAll("offers", offers);
   res.json(offer);
 });
 
-app.delete("/api/offers/:id", (req, res) => {
-  const offers = readJson(OFFERS_FILE, []);
+app.delete("/api/offers/:id", async (req, res) => {
+  const offers = await loadAll("offers");
   const index = offers.findIndex((o) => String(o.id) === String(req.params.id));
   if (index === -1) {
     return res.status(404).json({ error: "অফার পাওয়া যায়নি" });
   }
   const [removed] = offers.splice(index, 1);
-  writeJson(OFFERS_FILE, offers);
+  await saveAll("offers", offers);
   res.json({ deleted: true, id: removed.id });
 });
 
@@ -357,6 +401,10 @@ app.delete("/api/offers/:id", (req, res) => {
 app.get("*", (req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, "index.html"));
 });
+
+// Try MongoDB in the background; the server works with JSON files until
+// (and unless) the connection succeeds.
+connectMongo();
 
 app.listen(PORT, () => {
   console.log(`Tuition Platform চলছে: http://localhost:${PORT}`);

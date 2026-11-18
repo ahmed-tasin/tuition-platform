@@ -1,0 +1,16 @@
+# Render blueprint for the tuition-platform backend (free tier).
+# In the Render dashboard, create a new Blueprint from this repo, then set
+# the MONGODB_URI environment variable to your MongoDB Atlas connection string.
+# The frontend (GitHub Pages) points at this service via frontend/config.js.
+services:
+  - type: web
+    name: tuition-platform-backend
+    runtime: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
