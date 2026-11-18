@@ -107,6 +107,9 @@
 /* মিডিয়া ফি ব্যাজ যাতে এক লাইনে থাকে */
 .badge.media-yes, .badge.media-no { white-space: nowrap; }
 
+/* রেটিং (তারা + নম্বর) যাতে এক লাইনে থাকে */
+.admin-table .rating { white-space: nowrap; }
+
 /* ---------- ড্যাশবোর্ড কার্ড ---------- */
 .admin-panel-card {
   background: var(--card);
