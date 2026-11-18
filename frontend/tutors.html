@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>টিউটর খুঁজুন — টিউশন প্লাটফর্ম</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <nav class="nav">
+    <a class="logo" href="index.html">টিউশন<span>প্লাটফর্ম</span></a>
+    <div class="nav-links">
+      <a href="index.html">হোম</a>
+      <a href="tutors.html" class="active">টিউটর খুঁজুন</a>
+      <a href="request.html">টিউটর চাই</a>
+      <a href="register.html">টিউটর হিসেবে যোগ দিন</a>
+    </div>
+  </nav>
+</header>
+
+<main class="container">
+  <h1>টিউটর খুঁজুন</h1>
+  <p class="lead">বিষয়, শ্রেণি, এলাকা ও ফি অনুযায়ী ফিল্টার করুন। কার্ডে ক্লিক করলে পুরো প্রোফাইল দেখতে পাবেন।</p>
+
+  <div class="filters">
+    <div>
+      <label for="f-q">নাম / বিষয় / বিশ্ববিদ্যালয় লিখুন</label>
+      <input id="f-q" type="search" placeholder="যেমন: গণিত, বুয়েট, তানভীর">
+    </div>
+    <div>
+      <label for="f-subject">বিষয়</label>
+      <select id="f-subject"></select>
+    </div>
+    <div>
+      <label for="f-class">শ্রেণি</label>
+      <select id="f-class"></select>
+    </div>
+    <div>
+      <label for="f-area">এলাকা</label>
+      <select id="f-area"></select>
+    </div>
+    <div>
+      <label for="f-maxFee">সর্বোচ্চ মাসিক ফি (টাকা)</label>
+      <input id="f-maxFee" type="number" min="0" placeholder="যেমন: 6000">
+    </div>
+    <button class="btn secondary" id="clear-filters" type="button">ফিল্টার মুছুন</button>
+  </div>
+
+  <p class="muted" id="result-count" style="margin-top:16px"></p>
+  <div class="tutor-grid" id="tutor-list">
+    <p class="empty">লোড হচ্ছে…</p>
+  </div>
+</main>
+
+<footer>টিউশন প্লাটফর্ম — ঢাকা, বাংলাদেশ</footer>
+
+<script src="app.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  fillSelect(document.getElementById("f-subject"), SUBJECTS, "সব বিষয়");
+  fillSelect(document.getElementById("f-class"), CLASSES, "সব শ্রেণি");
+  fillSelect(document.getElementById("f-area"), AREAS, "সব এলাকা");
+
+  const inputs = {
+    q: document.getElementById("f-q"),
+    subject: document.getElementById("f-subject"),
+    class: document.getElementById("f-class"),
+    area: document.getElementById("f-area"),
+    maxFee: document.getElementById("f-maxFee")
+  };
+  inputs.q.value = params.get("q") || "";
+  inputs.subject.value = params.get("subject") || "";
+  inputs.class.value = params.get("class") || "";
+  inputs.area.value = params.get("area") || "";
+  inputs.maxFee.value = params.get("maxFee") || "";
+
+  let debounce;
+  function applyFilters() {
+    const filters = {
+      q: inputs.q.value.trim(),
+      subject: inputs.subject.value,
+      class: inputs.class.value,
+      area: inputs.area.value,
+      maxFee: inputs.maxFee.value.trim()
+    };
+    fetchTutors(filters).then((tutors) => {
+      renderTutorCards(document.getElementById("tutor-list"), tutors);
+      document.getElementById("result-count").textContent = tutors.length + " জন টিউটর পাওয়া গেছে";
+    });
+  }
+
+  Object.values(inputs).forEach((el) => {
+    el.addEventListener("input", () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(applyFilters, 250);
+    });
+    el.addEventListener("change", applyFilters);
+  });
+
+  document.getElementById("clear-filters").addEventListener("click", () => {
+    Object.values(inputs).forEach((el) => (el.value = ""));
+    applyFilters();
+  });
+
+  applyFilters();
+</script>
+</body>
+</html>
