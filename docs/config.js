@@ -1,7 +1,6 @@
 // API base URL for the hosted backend.
-// Default "" means same-origin: the backend serves this frontend itself
-// (e.g. local `npm start` on http://localhost:3000).
-// When the backend is hosted separately (e.g. on Render), set the hosted
-// backend URL here, e.g.:
-//   window.API_BASE = "https://tuition-platform.onrender.com";
-window.API_BASE = "";
+// The live backend runs on Render at the URL below; the GitHub Pages
+// frontend calls it for tutors, offers and requests. When developing
+// locally (backend serves this frontend itself, e.g. `npm start` on
+// http://localhost:3000), set this back to "" (same-origin).
+window.API_BASE = "https://tuition-platform-backend-z2fr.onrender.com";
