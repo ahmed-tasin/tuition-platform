@@ -442,6 +442,20 @@ async function adminPatch(kind, id, patch) {
   }
 }
 
+// নতুন অফার যোগ করুন (শুধু অ্যাডমিন প্যানেল থেকে) — API-তে পোস্ট করুন,
+// সার্ভার না পাওয়া গেলে স্থানীয়ভাবে সংরক্ষণ করুন
+// ফেরত: { where: "server" | "local", item }
+async function adminAddOffer(data) {
+  try {
+    const saved = await postJson("/offers", data);
+    return { where: "server", item: saved };
+  } catch (e) {
+    const item = { ...data, id: Date.now(), status: "খোলা", createdAt: new Date().toISOString() };
+    saveLocalItem("offers", item);
+    return { where: "local", item };
+  }
+}
+
 function offerCardHTML(o) {
   const genderBadge = o.teacherGender === "male"
     ? '<span class="badge gender-male">👨 শুধু পুরুষ</span>'
