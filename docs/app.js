@@ -32,6 +32,35 @@ function adminHeaders(extra) {
   return headers;
 }
 
+// ---------- টিউটর টোকেন ----------
+// tutor-login.html থেকে পাওয়া JWT শুধু এই ট্যাবের sessionStorage-এ থাকে —
+// localStorage-এ নয়, যাতে ট্যাব বন্ধ করলে মুছে যায়। /api/tutors/me
+// অনুরোধে এটি Authorization: Bearer হেডারে যায়।
+const TUTOR_TOKEN_KEY = "tp_tutor_token";
+
+function getTutorToken() {
+  try {
+    return sessionStorage.getItem(TUTOR_TOKEN_KEY) || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function setTutorToken(token) {
+  try {
+    if (token) sessionStorage.setItem(TUTOR_TOKEN_KEY, token);
+    else sessionStorage.removeItem(TUTOR_TOKEN_KEY);
+  } catch (e) {}
+}
+
+// টোকেন থাকলে Authorization হেডারে যোগ করে; না থাকলে শুধু দেওয়া হেডারগুলোই ফেরত দেয়।
+function tutorHeaders(extra) {
+  const headers = { ...(extra || {}) };
+  const token = getTutorToken();
+  if (token) headers["Authorization"] = "Bearer " + token;
+  return headers;
+}
+
 // সার্ভারের ত্রুটি থেকে Error বানান; HTTP স্ট্যাটাস error.status-এ রাখা হয়,
 // যাতে 401 (অননুমোদিত) আলাদা করে চেনা যায়।
 async function apiError(res, fallbackMessage) {

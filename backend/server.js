@@ -1,5 +1,7 @@
 const express = require("express");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
@@ -37,6 +39,40 @@ function requireAdmin(req, res, next) {
   return res.status(401).json({ error: "অননুমোদিত" });
 }
 
+// ---------- Tutor auth (JWT) ----------
+// Tutors log in with their phone number + password and get a JWT (7 days)
+// for GET/PATCH /api/tutors/me — their own profile only. The signing secret
+// lives only in the environment (Render dashboard / local .env). When it is
+// NOT set (local dev only), a random secret is generated at boot and tokens
+// will not survive a server restart — the server says so at startup.
+const JWT_SECRET = process.env.JWT_SECRET || "";
+const jwtSecret = JWT_SECRET || crypto.randomBytes(32).toString("hex");
+
+// passwordHash must never leave the server in any API response — every tutor
+// object returned by the API goes through this helper.
+function publicTutor(tutor) {
+  if (!tutor) return tutor;
+  const copy = { ...tutor };
+  delete copy.passwordHash;
+  return copy;
+}
+
+// Verifies the tutor JWT from the Authorization: Bearer header and attaches
+// the tutor's id/phone to the request. 401 on missing, invalid or expired.
+function requireTutor(req, res, next) {
+  const header = req.header("Authorization") || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  if (!token) {
+    return res.status(401).json({ error: "অননুমোদিত — আবার লগইন করুন" });
+  }
+  try {
+    req.tutorAuth = jwt.verify(token, jwtSecret);
+    return next();
+  } catch (err) {
+    return res.status(401).json({ error: "অননুমোদিত — আবার লগইন করুন" });
+  }
+}
+
 const DATA_DIR = path.join(__dirname, "data");
 const TUTORS_FILE = path.join(DATA_DIR, "tutors.json");
 const REQUESTS_FILE = path.join(DATA_DIR, "requests.json");
@@ -50,7 +86,7 @@ app.use(express.json());
 // writes need the x-admin-token header (see requireAdmin).
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Content-Type, x-admin-token");
+  res.header("Access-Control-Allow-Headers", "Content-Type, x-admin-token, Authorization");
   res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
@@ -126,6 +162,96 @@ app.post("/api/admin/login", (req, res) => {
   return res.status(401).json({ ok: false, error: "ভুল পাসকোড" });
 });
 
+// ---------- Tutor login ----------
+// Tutors log in with the phone number they registered with + the password
+// they set at registration (optional at registration time). The returned JWT
+// authorizes only that tutor's own profile (GET/PATCH /api/tutors/me).
+// Tutors registered before passwords existed (e.g. the 8 seed tutors) have
+// no passwordHash and cannot log in — they need to re-register with a
+// password, or the admin can recreate their profile.
+app.post("/api/tutors/login", async (req, res) => {
+  const phone = String((req.body && req.body.phone) || "").trim();
+  const password = (req.body && req.body.password) || "";
+  if (!phone || !password) {
+    return res.status(401).json({ ok: false, error: "ভুল ফোন নম্বর বা পাসওয়ার্ড" });
+  }
+  const tutors = await loadAll("tutors");
+  const tutor = tutors.find((t) => String(t.phone).trim() === phone);
+  if (!tutor) {
+    return res.status(401).json({ ok: false, error: "ভুল ফোন নম্বর বা পাসওয়ার্ড" });
+  }
+  if (!tutor.passwordHash) {
+    return res.status(401).json({
+      ok: false,
+      error: "এই অ্যাকাউন্টে এখনো লগইন পাসওয়ার্ড দেওয়া হয়নি। আবার নিবন্ধন করুন অথবা অ্যাডমিনের সাথে যোগাযোগ করুন।"
+    });
+  }
+  const ok = await bcrypt.compare(String(password), tutor.passwordHash);
+  if (!ok) {
+    return res.status(401).json({ ok: false, error: "ভুল ফোন নম্বর বা পাসওয়ার্ড" });
+  }
+  const token = jwt.sign({ tutorId: tutor.id, phone: tutor.phone }, jwtSecret, { expiresIn: "7d" });
+  res.json({ ok: true, token, tutor: publicTutor(tutor) });
+});
+
+// ---------- The logged-in tutor's own profile ----------
+// These routes must be registered BEFORE /api/tutors/:id, otherwise Express
+// would treat "me" as an id. Ownership is enforced by the JWT: the tutor can
+// only ever read or change the record whose id is in their own token.
+app.get("/api/tutors/me", requireTutor, async (req, res) => {
+  const tutors = await loadAll("tutors");
+  const tutor = tutors.find((t) => Number(t.id) === Number(req.tutorAuth.tutorId));
+  if (!tutor) {
+    return res.status(404).json({ error: "টিউটর পাওয়া যায়নি" });
+  }
+  res.json(publicTutor(tutor));
+});
+
+const TUTOR_SELF_PATCH_FIELDS = ["monthlyFee", "available", "subjects", "classes", "areas", "about", "department", "university"];
+
+app.patch("/api/tutors/me", requireTutor, async (req, res) => {
+  const tutors = await loadAll("tutors");
+  const tutor = tutors.find((t) => Number(t.id) === Number(req.tutorAuth.tutorId));
+  if (!tutor) {
+    return res.status(404).json({ error: "টিউটর পাওয়া যায়নি" });
+  }
+  const body = req.body || {};
+
+  // Password change: the current password must be verified first.
+  if (body.newPassword !== undefined || body.currentPassword !== undefined) {
+    const current = String(body.currentPassword || "");
+    const next = String(body.newPassword || "");
+    if (!tutor.passwordHash) {
+      return res.status(400).json({ error: "এই অ্যাকাউন্টে এখনো পাসওয়ার্ড দেওয়া হয়নি" });
+    }
+    if (next.length < 6) {
+      return res.status(400).json({ error: "নতুন পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে" });
+    }
+    const ok = await bcrypt.compare(current, tutor.passwordHash);
+    if (!ok) {
+      return res.status(401).json({ error: "বর্তমান পাসওয়ার্ড ভুল" });
+    }
+    tutor.passwordHash = await bcrypt.hash(next, 10);
+  }
+
+  // Only the allowlisted fields can change — id, phone and passwordHash are
+  // never writable through this route, even if sent in the body.
+  TUTOR_SELF_PATCH_FIELDS.forEach((key) => {
+    if (body[key] === undefined) return;
+    if (key === "monthlyFee") {
+      tutor[key] = Number(body[key]);
+    } else if (key === "available") {
+      tutor[key] = body[key] === true || body[key] === "true";
+    } else if (["subjects", "classes", "areas"].includes(key)) {
+      tutor[key] = Array.isArray(body[key]) ? body[key] : [body[key]];
+    } else {
+      tutor[key] = String(body[key]).trim();
+    }
+  });
+  await saveAll("tutors", tutors);
+  res.json(publicTutor(tutor));
+});
+
 // ---------- Tutors ----------
 app.get("/api/tutors", async (req, res) => {
   const { subject, class: cls, area, maxFee, q } = req.query;
@@ -156,7 +282,7 @@ app.get("/api/tutors", async (req, res) => {
     );
   }
 
-  res.json(tutors);
+  res.json(tutors.map(publicTutor));
 });
 
 app.get("/api/tutors/:id", async (req, res) => {
@@ -165,7 +291,7 @@ app.get("/api/tutors/:id", async (req, res) => {
   if (!tutor) {
     return res.status(404).json({ error: "টিউটর পাওয়া যায়নি" });
   }
-  res.json(tutor);
+  res.json(publicTutor(tutor));
 });
 
 app.post("/api/tutors", async (req, res) => {
@@ -179,6 +305,26 @@ app.post("/api/tutors", async (req, res) => {
   }
 
   const tutors = await loadAll("tutors");
+
+  // Optional login password: hashed with bcrypt, never stored in plaintext.
+  // Tutors who set one can later log in (tutor-login.html) to manage their
+  // own profile. Without a password the account cannot log in.
+  let passwordHash = "";
+  if (body.password !== undefined || body.confirmPassword !== undefined) {
+    const password = String(body.password || "");
+    const confirm = String(body.confirmPassword || "");
+    if (!password || !confirm) {
+      return res.status(400).json({ error: "পাসওয়ার্ড দিলে নিশ্চিতকরণ পাসওয়ার্ডও দিন" });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: "পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে" });
+    }
+    if (password !== confirm) {
+      return res.status(400).json({ error: "পাসওয়ার্ড দুটি মিলছে না" });
+    }
+    passwordHash = await bcrypt.hash(password, 10);
+  }
+
   const tutor = {
     id: nextId(tutors),
     name: String(body.name).trim(),
@@ -192,6 +338,7 @@ app.post("/api/tutors", async (req, res) => {
     rating: 5.0,
     reviewsCount: 0,
     phone: String(body.phone).trim(),
+    passwordHash,
     about: body.about ? String(body.about).trim() : "",
     available: true,
     reviews: [],
@@ -200,7 +347,7 @@ app.post("/api/tutors", async (req, res) => {
 
   tutors.push(tutor);
   await saveAll("tutors", tutors);
-  res.status(201).json(tutor);
+  res.status(201).json(publicTutor(tutor));
 });
 
 const TUTOR_PATCH_FIELDS = ["name", "university", "department", "subjects", "classes", "areas", "monthlyFee", "experienceYears", "phone", "about", "available"];
@@ -225,7 +372,7 @@ app.patch("/api/tutors/:id", requireAdmin, async (req, res) => {
     }
   });
   await saveAll("tutors", tutors);
-  res.json(tutor);
+  res.json(publicTutor(tutor));
 });
 
 app.delete("/api/tutors/:id", requireAdmin, async (req, res) => {
@@ -455,6 +602,9 @@ connectMongo();
 app.listen(PORT, () => {
   if (!ADMIN_PASSCODE) {
     console.log("WARNING: ADMIN_PASSCODE not set — admin writes are unauthenticated");
+  }
+  if (!JWT_SECRET) {
+    console.log("WARNING: JWT_SECRET not set — tutor login tokens will not survive a server restart");
   }
   console.log(`Tuition Platform চলছে: http://localhost:${PORT}`);
 });

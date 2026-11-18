@@ -7,6 +7,8 @@ const clean = {
     transform: (doc, ret) => {
       delete ret._id;
       delete ret.__v;
+      // passwordHash must never leave the server in any API response.
+      delete ret.passwordHash;
       return ret;
     }
   },
@@ -14,6 +16,7 @@ const clean = {
     transform: (doc, ret) => {
       delete ret._id;
       delete ret.__v;
+      delete ret.passwordHash;
       return ret;
     }
   }
@@ -43,6 +46,11 @@ const tutorSchema = new mongoose.Schema(
     rating: { type: Number, default: 5.0 },
     reviewsCount: { type: Number, default: 0 },
     phone: { type: String, required: true },
+    // bcrypt hash of the tutor's login password (never plaintext, never
+    // returned by the API). Empty for tutors registered before passwords
+    // existed (e.g. the seed tutors) — they cannot log in until they
+    // re-register with a password.
+    passwordHash: { type: String, default: "" },
     about: { type: String, default: "" },
     available: { type: Boolean, default: true },
     reviews: { type: [reviewSchema], default: [] },
@@ -96,6 +104,9 @@ const Offer = mongoose.model("Offer", offerSchema);
 const Request = mongoose.model("Request", requestSchema);
 
 // Strip Mongo internals from a lean() document so API output matches the JSON shape.
+// NOTE: passwordHash is intentionally NOT stripped here — the login and
+// password-change routes need it internally. It is stripped at the API
+// boundary instead, by publicTutor() in server.js, on every tutor response.
 function cleanDoc(doc) {
   if (!doc) return doc;
   const copy = { ...doc };

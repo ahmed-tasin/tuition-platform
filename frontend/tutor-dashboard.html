@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>টিউটর ড্যাশবোর্ড — টিউশন প্লাটফর্ম</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <nav class="nav">
+    <a class="logo" href="index.html">টিউশন<span>প্লাটফর্ম</span></a>
+    <div class="nav-links">
+      <a href="index.html">হোম</a>
+      <a href="tutors.html">টিউটর খুঁজুন</a>
+      <a href="offers.html">টিউশন অফার</a>
+      <a href="request.html">টিউটর চাই</a>
+      <a href="register.html">টিউটর হিসেবে যোগ দিন</a>
+      <a href="tutor-login.html" class="active">টিউটর লগইন</a>
+    </div>
+  </nav>
+</header>
+
+<main class="container">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <h1 style="font-size:1.6rem;margin:0">আমার প্রোফাইল</h1>
+    <button class="btn secondary" id="logout-btn" type="button">লগআউট</button>
+  </div>
+  <p class="lead">এখান থেকে নিজের ফি, বিষয়, শ্রেণি, এলাকা ও উপলব্ধতা বদলাতে পারবেন। নাম ও ফোন নম্বর বদলাতে অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
+  <div class="notice" id="notice" hidden></div>
+
+  <div class="form-card" id="profile-summary">
+    <p class="empty">লোড হচ্ছে…</p>
+  </div>
+
+  <div class="form-card" style="margin-top:20px">
+    <h2 style="font-size:1.25rem">প্রোফাইল বদলান</h2>
+    <form id="tutor-edit-form">
+      <div class="field">
+        <label for="university">বিশ্ববিদ্যালয় / প্রতিষ্ঠান *</label>
+        <input id="university" required>
+      </div>
+      <div class="field">
+        <label for="department">বিভাগ</label>
+        <input id="department">
+      </div>
+      <div class="field">
+        <label for="monthlyFee">মাসিক ফি (টাকা) *</label>
+        <input id="monthlyFee" type="number" min="0" required>
+      </div>
+      <div class="field">
+        <label><input type="checkbox" id="available" style="width:auto"> এখন নতুন শিক্ষার্থী নিতে পারবেন</label>
+      </div>
+      <div class="field">
+        <label>যেসব বিষয় পড়ান * (একাধিক বেছে নিতে পারেন)</label>
+        <div class="checkbox-group" id="subjects"></div>
+      </div>
+      <div class="field">
+        <label>যেসব শ্রেণি পড়ান * (একাধিক বেছে নিতে পারেন)</label>
+        <div class="checkbox-group" id="classes"></div>
+      </div>
+      <div class="field">
+        <label>যেসব এলাকায় পড়াতে পারবেন * (একাধিক বেছে নিতে পারেন)</label>
+        <div class="checkbox-group" id="areas"></div>
+      </div>
+      <div class="field">
+        <label for="about">নিজের সম্পর্কে কিছু লিখুন</label>
+        <textarea id="about" rows="3"></textarea>
+      </div>
+      <button class="btn" type="submit" style="width:100%">সংরক্ষণ করুন</button>
+    </form>
+  </div>
+
+  <div class="form-card" style="margin-top:20px">
+    <h2 style="font-size:1.25rem">পাসওয়ার্ড বদলান</h2>
+    <div class="notice" id="password-notice" hidden></div>
+    <form id="password-form">
+      <div class="field">
+        <label for="currentPassword">বর্তমান পাসওয়ার্ড *</label>
+        <input id="currentPassword" type="password" required>
+      </div>
+      <div class="field">
+        <label for="newPassword">নতুন পাসওয়ার্ড * (অন্তত ৬ অক্ষর)</label>
+        <input id="newPassword" type="password" minlength="6" required>
+      </div>
+      <div class="field">
+        <label for="confirmNewPassword">নতুন পাসওয়ার্ড আবার দিন *</label>
+        <input id="confirmNewPassword" type="password" minlength="6" required>
+      </div>
+      <button class="btn" type="submit" style="width:100%">পাসওয়ার্ড বদলান</button>
+    </form>
+  </div>
+
+  <p style="margin-top:16px"><a href="tutors.html">সবার সামনে আমার প্রোফাইল কেমন দেখায় →</a></p>
+</main>
+
+<footer>টিউশন প্লাটফর্ম — ঢাকা, বাংলাদেশ • <a href="admin.html">অ্যাডমিন</a></footer>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+  const notice = document.getElementById("notice");
+  const passwordNotice = document.getElementById("password-notice");
+  const summary = document.getElementById("profile-summary");
+
+  // লগইন না থাকলে লগইন পাতায় ফেরত যান
+  if (!getTutorToken()) {
+    window.location.href = "tutor-login.html";
+  }
+
+  function backToLogin() {
+    setTutorToken(null);
+    window.location.href = "tutor-login.html";
+  }
+
+  async function loadMe() {
+    try {
+      const res = await fetch(`${API_BASE}/tutors/me`, { headers: tutorHeaders() });
+      if (res.status === 401) {
+        backToLogin();
+        return null;
+      }
+      if (!res.ok) throw new Error("প্রোফাইল লোড করা যায়নি");
+      return await res.json();
+    } catch (err) {
+      showNotice(notice, "সার্ভারের সাথে সংযোগ হয়নি। আবার চেষ্টা করুন।", "error");
+      return null;
+    }
+  }
+
+  function fillForm(t) {
+    summary.innerHTML = `
+      <div class="tutor-top">
+        <div class="avatar">${escapeHtml(t.name.trim().charAt(0))}</div>
+        <div>
+          <div class="tutor-name" style="font-size:1.3rem">${escapeHtml(t.name)}</div>
+          <div class="tutor-uni">${escapeHtml(t.university)}${t.department ? " • " + escapeHtml(t.department) : ""}</div>
+          <div><span class="rating">${stars(t.rating)} ${Number(t.rating).toFixed(1)}</span> <span class="muted">(${t.reviewsCount} রিভিউ)</span></div>
+        </div>
+      </div>
+      <p style="margin:10px 0 6px">${(t.subjects || []).map((s) => `<span class="tag">${escapeHtml(s)}</span>`).join("")}</p>
+      <p class="muted" style="margin:4px 0">শ্রেণি: ${(t.classes || []).join(", ")}</p>
+      <p class="muted" style="margin:4px 0">এলাকা: ${(t.areas || []).join(", ")}</p>
+      <p class="muted" style="margin:4px 0">ফোন: ${escapeHtml(t.phone)}</p>
+      <p style="margin:8px 0">${t.about ? escapeHtml(t.about) : ""}</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+        <span class="fee">৳${Number(t.monthlyFee).toLocaleString("bn-BD")}/মাস</span>
+        ${t.available ? '<span class="badge available">উপলব্ধ</span>' : '<span class="badge busy">এই মুহূর্তে ব্যস্ত</span>'}
+      </div>`;
+
+    document.getElementById("university").value = t.university || "";
+    document.getElementById("department").value = t.department || "";
+    document.getElementById("monthlyFee").value = t.monthlyFee;
+    document.getElementById("available").checked = !!t.available;
+    document.getElementById("about").value = t.about || "";
+    document.getElementById("subjects").innerHTML = SUBJECTS.map(
+      (s) => `<label><input type="checkbox" name="subjects" value="${s}"${(t.subjects || []).includes(s) ? " checked" : ""}> ${s}</label>`
+    ).join("");
+    document.getElementById("classes").innerHTML = CLASSES.map(
+      (c) => `<label><input type="checkbox" name="classes" value="${c}"${(t.classes || []).includes(c) ? " checked" : ""}> ${c}</label>`
+    ).join("");
+    document.getElementById("areas").innerHTML = AREAS.map(
+      (a) => `<label><input type="checkbox" name="areas" value="${a}"${(t.areas || []).includes(a) ? " checked" : ""}> ${a}</label>`
+    ).join("");
+  }
+
+  loadMe().then((t) => { if (t) fillForm(t); });
+
+  document.getElementById("tutor-edit-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const subjects = checkedValues("subjects");
+    const classes = checkedValues("classes");
+    const areas = checkedValues("areas");
+    if (!subjects.length || !classes.length || !areas.length) {
+      showNotice(notice, "বিষয়, শ্রেণি ও এলাকা — প্রতিটি থেকে অন্তত একটি করে নির্বাচন করুন।", "error");
+      return;
+    }
+    const data = {
+      university: document.getElementById("university").value.trim(),
+      department: document.getElementById("department").value.trim(),
+      monthlyFee: Number(document.getElementById("monthlyFee").value),
+      available: document.getElementById("available").checked,
+      subjects,
+      classes,
+      areas,
+      about: document.getElementById("about").value.trim()
+    };
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${API_BASE}/tutors/me`, {
+        method: "PATCH",
+        headers: tutorHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(data)
+      });
+      if (res.status === 401) {
+        backToLogin();
+        return;
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "সংরক্ষণ করা যায়নি");
+      }
+      const updated = await res.json();
+      fillForm(updated);
+      showNotice(notice, "আপনার প্রোফাইল সংরক্ষিত হয়েছে।", "success");
+    } catch (err) {
+      showNotice(notice, "সংরক্ষণ করা যায়নি: " + err.message, "error");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById("password-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const currentPassword = document.getElementById("currentPassword").value;
+    const newPassword = document.getElementById("newPassword").value;
+    const confirm = document.getElementById("confirmNewPassword").value;
+    if (newPassword.length < 6) {
+      showNotice(passwordNotice, "নতুন পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।", "error");
+      return;
+    }
+    if (newPassword !== confirm) {
+      showNotice(passwordNotice, "নতুন পাসওয়ার্ড দুটি মিলছে না।", "error");
+      return;
+    }
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${API_BASE}/tutors/me`, {
+        method: "PATCH",
+        headers: tutorHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      if (res.status === 401) {
+        const err = await res.json().catch(() => ({}));
+        // 401 মানে হয় বর্তমান পাসওয়ার্ড ভুল, নয়তো টোকেনের মেয়াদ শেষ —
+        // সার্ভারের বার্তা দেখে আলাদা করুন
+        if (err.error === "বর্তমান পাসওয়ার্ড ভুল") {
+          showNotice(passwordNotice, "বর্তমান পাসওয়ার্ড ভুল।", "error");
+        } else {
+          backToLogin();
+        }
+        return;
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "পাসওয়ার্ড বদলানো যায়নি");
+      }
+      e.target.reset();
+      showNotice(passwordNotice, "পাসওয়ার্ড বদলে গেছে। পরেরবার নতুন পাসওয়ার্ড দিয়ে লগইন করুন।", "success");
+    } catch (err) {
+      showNotice(passwordNotice, "পাসওয়ার্ড বদলানো যায়নি: " + err.message, "error");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", backToLogin);
+</script>
+</body>
+</html>

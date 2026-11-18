@@ -16,6 +16,7 @@
       <a href="offers.html">টিউশন অফার</a>
       <a href="request.html">টিউটর চাই</a>
       <a href="register.html" class="active">টিউটর হিসেবে যোগ দিন</a>
+      <a href="tutor-login.html">টিউটর লগইন</a>
     </div>
   </nav>
 </header>
@@ -54,6 +55,15 @@
       <div class="field">
         <label>যেসব এলাকায় পড়াতে পারবেন * (একাধিক বেছে নিতে পারেন)</label>
         <div class="checkbox-group" id="areas"></div>
+      </div>
+      <div class="field">
+        <label for="password">লগইন পাসওয়ার্ড (ঐচ্ছিক, অন্তত ৬ অক্ষর)</label>
+        <input id="password" type="password" minlength="6" placeholder="পরে নিজের প্রোফাইল বদলাতে লগইন করতে লাগবে">
+        <p class="muted" style="margin:6px 0 0">পাসওয়ার্ড দিলে পরে টিউটর লগইন থেকে নিজের ফি, বিষয় ও উপলব্ধতা বদলাতে পারবেন। না দিলে এই অ্যাকাউন্টে লগইন করা যাবে না।</p>
+      </div>
+      <div class="field">
+        <label for="confirmPassword">পাসওয়ার্ড আবার দিন</label>
+        <input id="confirmPassword" type="password" minlength="6" placeholder="পাসওয়ার্ডটি আবার লিখুন">
       </div>
       <div class="field">
         <label for="monthlyFee">মাসিক ফি (টাকা) *</label>
@@ -97,6 +107,18 @@
       showNotice(notice, "বিষয়, শ্রেণি ও এলাকা — প্রতিটি থেকে অন্তত একটি করে নির্বাচন করুন।", "error");
       return;
     }
+    const password = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
+    if (password || confirmPassword) {
+      if (password.length < 6) {
+        showNotice(notice, "পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।", "error");
+        return;
+      }
+      if (password !== confirmPassword) {
+        showNotice(notice, "পাসওয়ার্ড দুটি মিলছে না।", "error");
+        return;
+      }
+    }
     const data = {
       name: document.getElementById("name").value.trim(),
       phone: document.getElementById("phone").value.trim(),
@@ -109,6 +131,10 @@
       experienceYears: Number(document.getElementById("experienceYears").value) || 0,
       about: document.getElementById("about").value.trim()
     };
+    if (password) {
+      data.password = password;
+      data.confirmPassword = confirmPassword;
+    }
     const btn = e.target.querySelector('button[type="submit"]');
     btn.disabled = true;
     try {
@@ -116,11 +142,14 @@
       showNotice(notice, `অভিনন্দন! আপনার প্রোফাইল তৈরি হয়েছে। টিউটর তালিকায় আপনার নাম দেখা যাবে।`, "success");
       e.target.reset();
     } catch (err) {
-      // সার্ভার না পাওয়া গেলে স্থানীয়ভাবে সংরক্ষণ করুন
+      // সার্ভার না পাওয়া গেলে স্থানীয়ভাবে সংরক্ষণ করুন — পাসওয়ার্ড
+      // ছাড়া (স্থানীয় প্রোফাইল দিয়ে লগইন করা যায় না, তাই পাসওয়ার্ড
+      // এই ডিভাইসে রাখার কোনো মানে নেই)
       try {
         const local = JSON.parse(localStorage.getItem("tp_local_tutors") || "[]");
         const id = 1000 + local.length + 1;
-        local.push({ ...data, id, rating: 5.0, reviewsCount: 0, reviews: [], available: true });
+        const { password, confirmPassword, ...localData } = data;
+        local.push({ ...localData, id, rating: 5.0, reviewsCount: 0, reviews: [], available: true });
         localStorage.setItem("tp_local_tutors", JSON.stringify(local));
         showNotice(notice, "সার্ভারের সাথে সংযোগ হয়নি, তবে আপনার প্রোফাইলটি এই ডিভাইসে সংরক্ষিত হয়েছে।", "info");
         e.target.reset();

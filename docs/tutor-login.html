@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>টিউটর লগইন — টিউশন প্লাটফর্ম</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <nav class="nav">
+    <a class="logo" href="index.html">টিউশন<span>প্লাটফর্ম</span></a>
+    <div class="nav-links">
+      <a href="index.html">হোম</a>
+      <a href="tutors.html">টিউটর খুঁজুন</a>
+      <a href="offers.html">টিউশন অফার</a>
+      <a href="request.html">টিউটর চাই</a>
+      <a href="register.html">টিউটর হিসেবে যোগ দিন</a>
+      <a href="tutor-login.html" class="active">টিউটর লগইন</a>
+    </div>
+  </nav>
+</header>
+
+<main class="container">
+  <div class="form-card">
+    <h1 style="font-size:1.6rem">টিউটর লগইন</h1>
+    <p class="lead">নিবন্ধনের সময় দেওয়া মোবাইল নম্বর ও পাসওয়ার্ড দিয়ে ঢুকুন — তারপর নিজের প্রোফাইল বদলাতে পারবেন।</p>
+    <div class="notice" id="notice" hidden></div>
+
+    <form id="tutor-login-form">
+      <div class="field">
+        <label for="phone">মোবাইল নম্বর *</label>
+        <input id="phone" type="tel" required placeholder="01XXXXXXXXX">
+      </div>
+      <div class="field">
+        <label for="password">পাসওয়ার্ড *</label>
+        <input id="password" type="password" required placeholder="আপনার পাসওয়ার্ড">
+      </div>
+      <button class="btn" type="submit" style="width:100%">লগইন করুন</button>
+    </form>
+
+    <p style="margin-top:16px">এখনো নিবন্ধন করেননি? <a href="register.html">টিউটর হিসেবে যোগ দিন</a></p>
+    <p class="muted">পাসওয়ার্ড ভুলে গেলে অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
+  </div>
+</main>
+
+<footer>টিউশন প্লাটফর্ম — ঢাকা, বাংলাদেশ • <a href="admin.html">অ্যাডমিন</a></footer>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+  const notice = document.getElementById("notice");
+
+  // ইতিমধ্যে লগইন করা থাকলে সরাসরি ড্যাশবোর্ডে যান
+  if (getTutorToken()) {
+    window.location.href = "tutor-dashboard.html";
+  }
+
+  document.getElementById("tutor-login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${API_BASE}/tutors/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: document.getElementById("phone").value.trim(),
+          password: document.getElementById("password").value
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showNotice(notice, data.error || "লগইন করা যায়নি। আবার চেষ্টা করুন।", "error");
+        return;
+      }
+      setTutorToken(data.token);
+      window.location.href = "tutor-dashboard.html";
+    } catch (err) {
+      showNotice(notice, "সার্ভারের সাথে সংযোগ হয়নি। আবার চেষ্টা করুন।", "error");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
