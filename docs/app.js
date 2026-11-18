@@ -3,6 +3,44 @@
 
 const API_BASE = ((window.API_BASE || "").replace(/\/$/, "")) + "/api";
 
+// ---------- অ্যাডমিন টোকেন ----------
+// লগইনের পর সার্ভার থেকে পাওয়া টোকেন (আসলে পাসকোডটিই) শুধু এই ট্যাবের
+// sessionStorage-এ থাকে — localStorage-এ নয়, যাতে ট্যাব বন্ধ করলে মুছে যায়।
+// অ্যাডমিনের লেখার (POST/PATCH/DELETE) অনুরোধে এটি x-admin-token হেডারে যায়।
+const ADMIN_TOKEN_KEY = "tp_admin_token";
+
+function getAdminToken() {
+  try {
+    return sessionStorage.getItem(ADMIN_TOKEN_KEY) || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function setAdminToken(token) {
+  try {
+    if (token) sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+    else sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  } catch (e) {}
+}
+
+// টোকেন থাকলে হেডারে যোগ করে; না থাকলে শুধু দেওয়া হেডারগুলোই ফেরত দেয়।
+function adminHeaders(extra) {
+  const headers = { ...(extra || {}) };
+  const token = getAdminToken();
+  if (token) headers["x-admin-token"] = token;
+  return headers;
+}
+
+// সার্ভারের ত্রুটি থেকে Error বানান; HTTP স্ট্যাটাস error.status-এ রাখা হয়,
+// যাতে 401 (অননুমোদিত) আলাদা করে চেনা যায়।
+async function apiError(res, fallbackMessage) {
+  const body = await res.json().catch(() => ({}));
+  const err = new Error(body.error || fallbackMessage);
+  err.status = res.status;
+  return err;
+}
+
 const SUBJECTS = ["গণিত", "পদার্থবিজ্ঞান", "রসায়ন", "জীববিজ্ঞান", "ইংরেজি", "বাংলা", "আইসিটি", "হিসাববিজ্ঞান"];
 const CLASSES = ["১ম-৫ম", "৬ষ্ঠ-৮ম", "৯ম-১০ম", "একাদশ-দ্বাদশ", "HSC", "ভর্তি পরীক্ষা"];
 const AREAS = ["ধানমন্ডি", "মিরপুর", "উত্তরা", "বসুন্ধরা", "মোহাম্মদপুর", "গুলশান", "বনানী"];
@@ -121,12 +159,11 @@ async function fetchTutor(id) {
 async function postJson(path, data) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: adminHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(data)
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "সার্ভার ত্রুটি");
+    throw await apiError(res, "সার্ভার ত্রুটি");
   }
   return res.json();
 }
@@ -375,10 +412,9 @@ async function fetchRequest(id) {
 
 // ---------- অ্যাডমিন অ্যাকশন (API থাকলে সার্ভারে, না থাকলে স্থানীয়ভাবে) ----------
 async function apiDelete(path) {
-  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE", headers: adminHeaders() });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "সার্ভার ত্রুটি");
+    throw await apiError(res, "সার্ভার ত্রুটি");
   }
   return res.json();
 }
@@ -386,17 +422,18 @@ async function apiDelete(path) {
 async function apiPatch(path, data) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: adminHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(data)
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "সার্ভার ত্রুটি");
+    throw await apiError(res, "সার্ভার ত্রুটি");
   }
   return res.json();
 }
 
 // kind: "tutors" | "offers" | "requests" — ফেরত: "server" বা "local"
+// 401 (অননুমোদিত) হলে স্থানীয় ফলব্যাকে যাওয়া হয় না — ত্রুটিটি উপরে ছোড়া হয়,
+// যাতে অ্যাডমিন প্যানেল "আবার লগইন করুন" দেখাতে পারে।
 async function adminDelete(kind, id) {
   const path = kind === "tutors" ? `/tutors/${id}` : kind === "offers" ? `/offers/${id}` : `/requests/${id}`;
   try {
@@ -404,6 +441,7 @@ async function adminDelete(kind, id) {
     removeLocalItem(kind, id);
     return "server";
   } catch (e) {
+    if (e && e.status === 401) throw e;
     const keys = ADMIN_KIND_KEYS[kind];
     const deleted = readAdminList(keys.deleted);
     if (!deleted.map(String).includes(String(id))) {
@@ -416,6 +454,7 @@ async function adminDelete(kind, id) {
 }
 
 // ফেরত: { where: "server" | "local", item }
+// 401 হলে স্থানীয় ফলব্যাকে যাওয়া হয় না — ত্রুটিটি উপরে ছোড়া হয়।
 async function adminPatch(kind, id, patch) {
   const path = kind === "tutors" ? `/tutors/${id}` : kind === "offers" ? `/offers/${id}` : `/requests/${id}`;
   try {
@@ -428,6 +467,7 @@ async function adminPatch(kind, id, patch) {
     }
     return { where: "server", item: updated };
   } catch (e) {
+    if (e && e.status === 401) throw e;
     const keys = ADMIN_KIND_KEYS[kind];
     const overrides = readAdminMap(keys.overrides);
     overrides[String(id)] = { ...(overrides[String(id)] || {}), ...patch };
@@ -445,11 +485,13 @@ async function adminPatch(kind, id, patch) {
 // নতুন অফার যোগ করুন (শুধু অ্যাডমিন প্যানেল থেকে) — API-তে পোস্ট করুন,
 // সার্ভার না পাওয়া গেলে স্থানীয়ভাবে সংরক্ষণ করুন
 // ফেরত: { where: "server" | "local", item }
+// 401 হলে স্থানীয় ফলব্যাকে যাওয়া হয় না — ত্রুটিটি উপরে ছোড়া হয়।
 async function adminAddOffer(data) {
   try {
     const saved = await postJson("/offers", data);
     return { where: "server", item: saved };
   } catch (e) {
+    if (e && e.status === 401) throw e;
     const item = { ...data, id: Date.now(), status: "খোলা", createdAt: new Date().toISOString() };
     saveLocalItem("offers", item);
     return { where: "local", item };

@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
@@ -9,6 +10,33 @@ const { Tutor, Offer, Request, cleanDoc } = require("./models");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ---------- Admin auth ----------
+// ADMIN_PASSCODE is a single shared secret (not per-user accounts). It lives
+// only in the environment (Render dashboard / local .env) — never in the repo.
+// When it is set, every admin write (see requireAdmin) needs the
+// x-admin-token header to match it. When it is NOT set (local dev only),
+// writes are unauthenticated and the server says so at startup.
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || "";
+
+function adminTokenMatches(token) {
+  if (!ADMIN_PASSCODE) return false;
+  const given = Buffer.from(String(token || ""));
+  const expected = Buffer.from(ADMIN_PASSCODE);
+  if (given.length !== expected.length) return false;
+  return crypto.timingSafeEqual(given, expected);
+}
+
+// Guards admin writes. GETs stay public (the listings are public by design).
+// Public POSTs stay open too: POST /api/tutors is the public tutor-registration
+// form and POST /api/requests is the public student-request form — locking
+// those would break the site's public features. Everything destructive or
+// admin-only (all PATCH/DELETE, POST /api/offers) requires the token.
+function requireAdmin(req, res, next) {
+  if (!ADMIN_PASSCODE) return next();
+  if (adminTokenMatches(req.header("x-admin-token"))) return next();
+  return res.status(401).json({ error: "অননুমোদিত" });
+}
+
 const DATA_DIR = path.join(__dirname, "data");
 const TUTORS_FILE = path.join(DATA_DIR, "tutors.json");
 const REQUESTS_FILE = path.join(DATA_DIR, "requests.json");
@@ -18,10 +46,11 @@ const FRONTEND_DIR = path.join(__dirname, "..", "frontend");
 app.use(express.json());
 
 // CORS: the frontend on GitHub Pages calls this API cross-origin when the
-// backend is hosted (e.g. on Render). Allow it; the API has no auth.
+// backend is hosted (e.g. on Render). Allow it; reads are public, and admin
+// writes need the x-admin-token header (see requireAdmin).
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
+  res.header("Access-Control-Allow-Headers", "Content-Type, x-admin-token");
   res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
@@ -78,6 +107,23 @@ function nextId(items) {
 // ---------- Health ----------
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", service: "tuition-platform", db: isMongoReady() ? "mongo" : "json", time: new Date().toISOString() });
+});
+
+// ---------- Admin login ----------
+// Verifies the passcode server-side and returns it as the token the admin
+// panel sends back in the x-admin-token header on writes. The token IS the
+// passcode (a single shared secret), so the frontend keeps it only in
+// sessionStorage. When ADMIN_PASSCODE is not configured (local dev), there is
+// nothing to check against — the panel is told so with a 503.
+app.post("/api/admin/login", (req, res) => {
+  if (!ADMIN_PASSCODE) {
+    return res.status(503).json({ ok: false, error: "সার্ভারে অ্যাডমিন পাসকোড কনফিগার করা হয়নি" });
+  }
+  const passcode = req.body && req.body.passcode;
+  if (adminTokenMatches(passcode)) {
+    return res.json({ ok: true, token: ADMIN_PASSCODE });
+  }
+  return res.status(401).json({ ok: false, error: "ভুল পাসকোড" });
 });
 
 // ---------- Tutors ----------
@@ -159,7 +205,7 @@ app.post("/api/tutors", async (req, res) => {
 
 const TUTOR_PATCH_FIELDS = ["name", "university", "department", "subjects", "classes", "areas", "monthlyFee", "experienceYears", "phone", "about", "available"];
 
-app.patch("/api/tutors/:id", async (req, res) => {
+app.patch("/api/tutors/:id", requireAdmin, async (req, res) => {
   const tutors = await loadAll("tutors");
   const tutor = tutors.find((t) => String(t.id) === String(req.params.id));
   if (!tutor) {
@@ -182,7 +228,7 @@ app.patch("/api/tutors/:id", async (req, res) => {
   res.json(tutor);
 });
 
-app.delete("/api/tutors/:id", async (req, res) => {
+app.delete("/api/tutors/:id", requireAdmin, async (req, res) => {
   const tutors = await loadAll("tutors");
   const index = tutors.findIndex((t) => String(t.id) === String(req.params.id));
   if (index === -1) {
@@ -241,7 +287,7 @@ app.get("/api/requests/:id", async (req, res) => {
   res.json(request);
 });
 
-app.patch("/api/requests/:id", async (req, res) => {
+app.patch("/api/requests/:id", requireAdmin, async (req, res) => {
   const requests = await loadAll("requests");
   const request = requests.find((r) => String(r.id) === String(req.params.id));
   if (!request) {
@@ -265,7 +311,7 @@ app.patch("/api/requests/:id", async (req, res) => {
   res.json(request);
 });
 
-app.delete("/api/requests/:id", async (req, res) => {
+app.delete("/api/requests/:id", requireAdmin, async (req, res) => {
   const requests = await loadAll("requests");
   const index = requests.findIndex((r) => String(r.id) === String(req.params.id));
   if (index === -1) {
@@ -321,7 +367,7 @@ app.get("/api/offers/:id", async (req, res) => {
   res.json(offer);
 });
 
-app.post("/api/offers", async (req, res) => {
+app.post("/api/offers", requireAdmin, async (req, res) => {
   const body = req.body || {};
   const required = ["location", "class", "subjects", "salary"];
   const missing = required.filter(
@@ -359,7 +405,7 @@ app.post("/api/offers", async (req, res) => {
 const OFFER_STATUSES = ["খোলা", "বন্ধ"];
 const OFFER_PATCH_FIELDS = ["teacherGender", "preferredDepartment", "location", "class", "subjects", "studentCount", "salary", "daysPerWeek", "durationPerDay", "mediaFee", "posterName", "phone", "notes", "status"];
 
-app.patch("/api/offers/:id", async (req, res) => {
+app.patch("/api/offers/:id", requireAdmin, async (req, res) => {
   const offers = await loadAll("offers");
   const offer = offers.find((o) => String(o.id) === String(req.params.id));
   if (!offer) {
@@ -386,7 +432,7 @@ app.patch("/api/offers/:id", async (req, res) => {
   res.json(offer);
 });
 
-app.delete("/api/offers/:id", async (req, res) => {
+app.delete("/api/offers/:id", requireAdmin, async (req, res) => {
   const offers = await loadAll("offers");
   const index = offers.findIndex((o) => String(o.id) === String(req.params.id));
   if (index === -1) {
@@ -407,5 +453,8 @@ app.get("*", (req, res) => {
 connectMongo();
 
 app.listen(PORT, () => {
+  if (!ADMIN_PASSCODE) {
+    console.log("WARNING: ADMIN_PASSCODE not set — admin writes are unauthenticated");
+  }
   console.log(`Tuition Platform চলছে: http://localhost:${PORT}`);
 });

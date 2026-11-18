@@ -39,8 +39,7 @@
             </div>
             <button class="btn" type="submit" style="width:100%">প্যানেলে ঢুকুন</button>
           </form>
-          <p class="muted" style="margin-top:16px">ডিফল্ট পাসকোড: <strong>admin123</strong> — প্রথমবার ঢুকে সেটিংস থেকে বদলে নিন।</p>
-          <p class="muted">এটি একটি সহজ পাসকোড গেট; এটি ব্যাংক-মানের নিরাপত্তা নয়।</p>
+          <p class="muted" style="margin-top:16px">পাসকোডটি সার্ভারে যাচাই করা হয় — এটি কোথাও লেখা থাকে না।</p>
         </div>
       </div>
     </div>
@@ -252,30 +251,15 @@
     <!-- সেটিংস -->
     <section id="tab-settings" class="admin-tab-panel" hidden>
       <div class="form-card" style="margin:0">
-        <h2 style="margin-top:0">পাসকোড বদলান</h2>
-        <div class="notice" id="settings-notice" hidden></div>
-        <form id="passcode-form">
-          <div class="field">
-            <label for="current-passcode">বর্তমান পাসকোড *</label>
-            <input id="current-passcode" type="password" required autocomplete="current-password">
-          </div>
-          <div class="field">
-            <label for="new-passcode">নতুন পাসকোড *</label>
-            <input id="new-passcode" type="password" required minlength="4" autocomplete="new-password" placeholder="কমপক্ষে ৪ অক্ষর">
-          </div>
-          <div class="field">
-            <label for="new-passcode-confirm">নতুন পাসকোড আবার লিখুন *</label>
-            <input id="new-passcode-confirm" type="password" required minlength="4" autocomplete="new-password">
-          </div>
-          <button class="btn" type="submit">পাসকোড বদলান</button>
-        </form>
+        <h2 style="margin-top:0">পাসকোড</h2>
+        <p>অ্যাডমিন পাসকোড এখন সার্ভারে পরিচালিত হয় — Render ড্যাশবোর্ডে সার্ভিসের Environment ভ্যারিয়েবলে <code>ADMIN_PASSCODE</code> হিসেবে সেট করা থাকে। এই প্যানেল থেকে পাসকোড বদলানো যায় না; বদলাতে হলে Render-এ গিয়ে মানটি বদলে সার্ভিসটি রিডিপ্লয় করতে হবে।</p>
+        <p class="muted">লেখা-মোছার প্রতিটি অনুরোধে সার্ভার পাসকোডটি (টোকেন হিসেবে) যাচাই করে। পাসকোডটি কারও সাথে শেয়ার করবেন না।</p>
       </div>
 
       <div class="form-card" style="margin-top:20px">
         <h2 style="margin-top:0">তথ্য সংরক্ষণ সম্পর্কে</h2>
-        <p>ব্যাকএন্ড চালু থাকলে (লোকাল সার্ভারে) অ্যাডমিনের পরিবর্তন — মুছে ফেলা, স্ট্যাটাস বদলানো, উপলব্ধ/ব্যস্ত করা — সার্ভারে সংরক্ষিত হয় এবং সবাই তা দেখতে পায়।</p>
-        <p>লাইভ স্ট্যাটিক সাইটে (GitHub Pages) ব্যাকএন্ড চলে না, তাই পরিবর্তন শুধু এই ব্রাউজারে (localStorage-এ) সংরক্ষিত হয় — অন্য ডিভাইসে তা দেখা যাবে না।</p>
-        <p class="muted">পাসকোডটি এই ব্রাউজারে সংরক্ষিত হয়। অন্য ব্রাউজার/ডিভাইসে ডিফল্ট পাসকোড <strong>admin123</strong> কাজ করবে।</p>
+        <p>ব্যাকএন্ড চালু থাকলে অ্যাডমিনের পরিবর্তন — মুছে ফেলা, স্ট্যাটাস বদলানো, উপলব্ধ/ব্যস্ত করা — সার্ভারে (MongoDB-তে) সংরক্ষিত হয় এবং সবাই তা দেখতে পায়।</p>
+        <p>ব্যাকএন্ডের সাথে সংযোগ না থাকলে পরিবর্তন শুধু এই ব্রাউজারে (localStorage-এ) সংরক্ষিত হয় — অন্য ডিভাইসে তা দেখা যাবে না।</p>
       </div>
     </section>
       </div>
@@ -288,17 +272,12 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script>
-  const DEFAULT_PASSCODE = "admin123";
-  const PASSCODE_KEY = "tp_admin_passcode";
-  const LOGIN_KEY = "tp_admin_logged_in";
-
-  function getPasscode() {
-    try {
-      return localStorage.getItem(PASSCODE_KEY) || DEFAULT_PASSCODE;
-    } catch (e) {
-      return DEFAULT_PASSCODE;
-    }
-  }
+  // অ্যাডমিন লগইন সার্ভারে যাচাই করা হয় (POST /api/admin/login)। ব্রাউজারে
+  // কোনো পাসকোড লেখা থাকে না; সফল লগইনে পাওয়া টোকেন শুধু এই ট্যাবের
+  // sessionStorage-এ থাকে (app.js-এর getAdminToken/setAdminToken দেখুন)।
+  // সার্ভারে পাসকোড কনফিগার না থাকলে (লোকাল ডেভ) লগইন 503 দেয় — তখন
+  // টোকেন ছাড়াই প্যানেল খোলে, কারণ সার্ভারও সেই মোডে লেখা উন্মুক্ত রাখে।
+  let adminDevMode = false;
 
   const loginView = document.getElementById("login-view");
   const panelView = document.getElementById("panel-view");
@@ -308,25 +287,60 @@
   function showPanel() {
     loginView.hidden = true;
     panelView.hidden = false;
-    saveNote.textContent = "ব্যাকএন্ডের সাথে সংযোগ না থাকলে পরিবর্তন এই ব্রাউজারেই সংরক্ষিত হবে (localStorage)।";
+    saveNote.textContent = adminDevMode
+      ? "সার্ভারে পাসকোড কনফিগার করা হয়নি — ডেভ মোডে চলছে। লগইন যাচাই ছাড়াই পরিবর্তন সার্ভারে সংরক্ষিত হবে।"
+      : "ব্যাকএন্ডের সাথে সংযোগ না থাকলে পরিবর্তন এই ব্রাউজারেই সংরক্ষিত হবে (localStorage)।";
     loadAll();
   }
 
   function showLogin() {
     panelView.hidden = true;
     loginView.hidden = false;
-    try { sessionStorage.removeItem(LOGIN_KEY); } catch (e) {}
+    adminDevMode = false;
+    setAdminToken(null);
   }
 
-  document.getElementById("login-form").addEventListener("submit", (e) => {
+  // 401 হলে টোকেন মুছে লগইন পাতায় ফেরত যান; অন্য ত্রুটি হলে false ফেরত দেয়
+  function handleAdminAuthError(err) {
+    if (err && err.status === 401) {
+      alert("অননুমোদিত — আবার লগইন করুন।");
+      showLogin();
+      return true;
+    }
+    return false;
+  }
+
+  document.getElementById("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const value = document.getElementById("passcode").value;
-    if (value === getPasscode()) {
-      try { sessionStorage.setItem(LOGIN_KEY, "1"); } catch (e2) {}
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${API_BASE}/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passcode: value })
+      });
+      if (res.status === 503) {
+        adminDevMode = true;
+        setAdminToken(null);
+        document.getElementById("passcode").value = "";
+        showPanel();
+        return;
+      }
+      if (!res.ok) {
+        showNotice(loginNotice, "ভুল পাসকোড। আবার চেষ্টা করুন।", "error");
+        return;
+      }
+      const data = await res.json();
+      adminDevMode = false;
+      setAdminToken(data.token);
       document.getElementById("passcode").value = "";
       showPanel();
-    } else {
-      showNotice(loginNotice, "ভুল পাসকোড। আবার চেষ্টা করুন।", "error");
+    } catch (err) {
+      showNotice(loginNotice, "সার্ভারের সাথে সংযোগ হয়নি। আবার চেষ্টা করুন।", "error");
+    } finally {
+      btn.disabled = false;
     }
   });
 
@@ -508,6 +522,13 @@
       document.getElementById("add-offer-form-wrap").hidden = true;
       document.getElementById("add-offer-btn").textContent = "+ অফার যোগ করুন";
       await loadAll();
+    } catch (err) {
+      if (err && err.status === 401) {
+        showNotice(notice, "অননুমোদিত — আবার লগইন করুন।", "error");
+        showLogin();
+      } else {
+        showNotice(notice, "ত্রুটি: " + err.message, "error");
+      }
     } finally {
       btn.disabled = false;
     }
@@ -588,7 +609,9 @@
     tbody.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn) return;
-      handleAction(btn.dataset.action, btn.dataset.id);
+      handleAction(btn.dataset.action, btn.dataset.id).catch((err) => {
+        if (!handleAdminAuthError(err)) alert("ত্রুটি: " + err.message);
+      });
     });
   });
 
@@ -650,46 +673,21 @@
     });
     backdrop.querySelectorAll("[data-status]").forEach((btn) => {
       btn.addEventListener("click", async () => {
-        const res = await adminPatch("requests", r.id, { status: btn.dataset.status });
-        close();
-        alert(`স্ট্যাটাস "${btn.dataset.status}" করা হয়েছে। ${savedWhereText(res.where)}`);
-        loadAll();
+        try {
+          const res = await adminPatch("requests", r.id, { status: btn.dataset.status });
+          close();
+          alert(`স্ট্যাটাস "${btn.dataset.status}" করা হয়েছে। ${savedWhereText(res.where)}`);
+          loadAll();
+        } catch (err) {
+          if (!handleAdminAuthError(err)) alert("ত্রুটি: " + err.message);
+        }
       });
     });
   }
 
-  // ---------- পাসকোড বদলান ----------
-  document.getElementById("passcode-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const notice = document.getElementById("settings-notice");
-    const current = document.getElementById("current-passcode").value;
-    const next = document.getElementById("new-passcode").value;
-    const confirmValue = document.getElementById("new-passcode-confirm").value;
-    if (current !== getPasscode()) {
-      showNotice(notice, "বর্তমান পাসকোড ভুল।", "error");
-      return;
-    }
-    if (next.length < 4) {
-      showNotice(notice, "নতুন পাসকোড কমপক্ষে ৪ অক্ষরের হতে হবে।", "error");
-      return;
-    }
-    if (next !== confirmValue) {
-      showNotice(notice, "নতুন পাসকোড দুবার একই হয়নি। আবার লিখুন।", "error");
-      return;
-    }
-    try {
-      localStorage.setItem(PASSCODE_KEY, next);
-    } catch (err) {
-      showNotice(notice, "পাসকোড সংরক্ষণ করা যায়নি।", "error");
-      return;
-    }
-    e.target.reset();
-    showNotice(notice, "পাসকোড সফলভাবে বদলানো হয়েছে।", "success");
-  });
-
-  // সেশন লগইন থাকলে সরাসরি প্যানেল দেখান
+  // লগইন টোকেন থাকলে সরাসরি প্যানেল দেখান
   try {
-    if (sessionStorage.getItem(LOGIN_KEY) === "1") {
+    if (getAdminToken()) {
       showPanel();
     }
   } catch (e) {}
