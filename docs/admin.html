@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>অ্যাডমিন প্যানেল — টিউশন প্লাটফর্ম</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <nav class="nav">
+    <a class="logo" href="index.html">টিউশন<span>প্লাটফর্ম</span></a>
+    <div class="nav-links">
+      <a href="index.html">হোম</a>
+      <a href="tutors.html">টিউটর খুঁজুন</a>
+      <a href="offers.html">টিউশন অফার</a>
+      <a href="request.html">টিউটর চাই</a>
+      <a href="register.html">টিউটর হিসেবে যোগ দিন</a>
+    </div>
+  </nav>
+</header>
+
+<main class="container">
+  <!-- লগইন গেট -->
+  <div id="login-view">
+    <div class="form-card" style="margin-top:32px">
+      <h1 style="font-size:1.6rem">🔐 অ্যাডমিন প্যানেল</h1>
+      <p class="lead">অ্যাডমিন প্যানেলে ঢুকতে পাসকোড দিন।</p>
+      <div class="notice" id="login-notice" hidden></div>
+      <form id="login-form">
+        <div class="field">
+          <label for="passcode">পাসকোড</label>
+          <input id="passcode" type="password" required placeholder="পাসকোড লিখুন" autocomplete="current-password">
+        </div>
+        <button class="btn" type="submit" style="width:100%">প্যানেলে ঢুকুন</button>
+      </form>
+      <p class="muted" style="margin-top:16px">ডিফল্ট পাসকোড: <strong>admin123</strong> — প্রথমবার ঢুকে সেটিংস থেকে বদলে নিন।</p>
+      <p class="muted">এটি একটি সহজ পাসকোড গেট; এটি ব্যাংক-মানের নিরাপত্তা নয়।</p>
+    </div>
+  </div>
+
+  <!-- প্যানেল -->
+  <div id="panel-view" hidden>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div>
+        <h1 style="margin-bottom:0">অ্যাডমিন প্যানেল</h1>
+        <p class="lead">টিউটর, অফার ও অনুরোধ — সবকিছু এক জায়গা থেকে দেখুন ও পরিচালনা করুন।</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn secondary" href="index.html">সাইট দেখুন</a>
+        <button class="btn secondary" id="logout-btn" type="button">লগআউট</button>
+      </div>
+    </div>
+    <p class="muted" id="save-note"></p>
+
+    <div class="admin-tabs" role="tablist">
+      <button class="admin-tab active" data-tab="dashboard" type="button">ড্যাশবোর্ড</button>
+      <button class="admin-tab" data-tab="tutors" type="button">টিউটররা <span class="count" id="count-tutors"></span></button>
+      <button class="admin-tab" data-tab="offers" type="button">অফারসমূহ <span class="count" id="count-offers"></span></button>
+      <button class="admin-tab" data-tab="requests" type="button">অনুরোধসমূহ <span class="count" id="count-requests"></span></button>
+      <button class="admin-tab" data-tab="settings" type="button">সেটিংস</button>
+    </div>
+
+    <!-- ড্যাশবোর্ড -->
+    <section id="tab-dashboard" class="admin-tab-panel">
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat-card"><div class="stat-num" id="stat-tutors">—</div><div class="stat-label">মোট টিউটর</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-offers">—</div><div class="stat-label">মোট অফার</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-open-offers">—</div><div class="stat-label">খোলা অফার</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-requests">—</div><div class="stat-label">মোট অনুরোধ</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-new-requests">—</div><div class="stat-label">নতুন অনুরোধ</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-available">—</div><div class="stat-label">উপলব্ধ টিউটর</div></div>
+      </div>
+
+      <h2>সাম্প্রতিক অফার</h2>
+      <div id="recent-offers"><p class="empty">লোড হচ্ছে…</p></div>
+      <p><a href="#" id="goto-offers">সব অফার দেখুন →</a></p>
+
+      <h2>সাম্প্রতিক অনুরোধ</h2>
+      <div id="recent-requests"><p class="empty">লোড হচ্ছে…</p></div>
+      <p><a href="#" id="goto-requests">সব অনুরোধ দেখুন →</a></p>
+    </section>
+
+    <!-- টিউটররা -->
+    <section id="tab-tutors" class="admin-tab-panel" hidden>
+      <div class="filters">
+        <div>
+          <label for="tutor-search">খুঁজুন (নাম / বিশ্ববিদ্যালয় / বিষয়)</label>
+          <input id="tutor-search" type="search" placeholder="যেমন: বুয়েট, গণিত">
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>টিউটর</th><th>বিষয়</th><th>এলাকা</th><th>মাসিক ফি</th><th>রেটিং</th><th>অবস্থা</th><th>অ্যাকশন</th></tr>
+          </thead>
+          <tbody id="tutors-tbody"><tr><td colspan="7"><p class="empty">লোড হচ্ছে…</p></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- অফারসমূহ -->
+    <section id="tab-offers" class="admin-tab-panel" hidden>
+      <div class="filters">
+        <div>
+          <label for="offer-search">খুঁজুন (এলাকা / শ্রেণি / বিষয়)</label>
+          <input id="offer-search" type="search" placeholder="যেমন: ময়মনসিংহ, SSC 27">
+        </div>
+        <div>
+          <label for="offer-status">স্ট্যাটাস</label>
+          <select id="offer-status">
+            <option value="">সব</option>
+            <option value="খোলা">খোলা</option>
+            <option value="বন্ধ">বন্ধ</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>অফার</th><th>শ্রেণি</th><th>বিষয়</th><th>বেতন</th><th>শিক্ষক</th><th>মিডিয়া ফি</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
+          </thead>
+          <tbody id="offers-tbody"><tr><td colspan="8"><p class="empty">লোড হচ্ছে…</p></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- অনুরোধসমূহ -->
+    <section id="tab-requests" class="admin-tab-panel" hidden>
+      <div class="filters">
+        <div>
+          <label for="request-search">খুঁজুন (নাম / এলাকা / বিষয়)</label>
+          <input id="request-search" type="search" placeholder="যেমন: রাফি, মিরপুর">
+        </div>
+        <div>
+          <label for="request-status">স্ট্যাটাস</label>
+          <select id="request-status">
+            <option value="">সব</option>
+            <option value="নতুন">নতুন</option>
+            <option value="যোগাযোগ হয়েছে">যোগাযোগ হয়েছে</option>
+            <option value="সম্পন্ন">সম্পন্ন</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>শিক্ষার্থী</th><th>শ্রেণি</th><th>বিষয়</th><th>এলাকা</th><th>বাজেট</th><th>পছন্দের সময়</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
+          </thead>
+          <tbody id="requests-tbody"><tr><td colspan="8"><p class="empty">লোড হচ্ছে…</p></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- সেটিংস -->
+    <section id="tab-settings" class="admin-tab-panel" hidden>
+      <div class="form-card" style="margin:0">
+        <h2 style="margin-top:0">পাসকোড বদলান</h2>
+        <div class="notice" id="settings-notice" hidden></div>
+        <form id="passcode-form">
+          <div class="field">
+            <label for="current-passcode">বর্তমান পাসকোড *</label>
+            <input id="current-passcode" type="password" required autocomplete="current-password">
+          </div>
+          <div class="field">
+            <label for="new-passcode">নতুন পাসকোড *</label>
+            <input id="new-passcode" type="password" required minlength="4" autocomplete="new-password" placeholder="কমপক্ষে ৪ অক্ষর">
+          </div>
+          <div class="field">
+            <label for="new-passcode-confirm">নতুন পাসকোড আবার লিখুন *</label>
+            <input id="new-passcode-confirm" type="password" required minlength="4" autocomplete="new-password">
+          </div>
+          <button class="btn" type="submit">পাসকোড বদলান</button>
+        </form>
+      </div>
+
+      <div class="form-card" style="margin-top:20px">
+        <h2 style="margin-top:0">তথ্য সংরক্ষণ সম্পর্কে</h2>
+        <p>ব্যাকএন্ড চালু থাকলে (লোকাল সার্ভারে) অ্যাডমিনের পরিবর্তন — মুছে ফেলা, স্ট্যাটাস বদলানো, উপলব্ধ/ব্যস্ত করা — সার্ভারে সংরক্ষিত হয় এবং সবাই তা দেখতে পায়।</p>
+        <p>লাইভ স্ট্যাটিক সাইটে (GitHub Pages) ব্যাকএন্ড চলে না, তাই পরিবর্তন শুধু এই ব্রাউজারে (localStorage-এ) সংরক্ষিত হয় — অন্য ডিভাইসে তা দেখা যাবে না।</p>
+        <p class="muted">পাসকোডটি এই ব্রাউজারে সংরক্ষিত হয়। অন্য ব্রাউজার/ডিভাইসে ডিফল্ট পাসকোড <strong>admin123</strong> কাজ করবে।</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>টিউশন প্লাটফর্ম — ঢাকা, বাংলাদেশ • <a href="admin.html">অ্যাডমিন</a></footer>
+
+<script src="app.js"></script>
+<script>
+  const DEFAULT_PASSCODE = "admin123";
+  const PASSCODE_KEY = "tp_admin_passcode";
+  const LOGIN_KEY = "tp_admin_logged_in";
+
+  function getPasscode() {
+    try {
+      return localStorage.getItem(PASSCODE_KEY) || DEFAULT_PASSCODE;
+    } catch (e) {
+      return DEFAULT_PASSCODE;
+    }
+  }
+
+  const loginView = document.getElementById("login-view");
+  const panelView = document.getElementById("panel-view");
+  const loginNotice = document.getElementById("login-notice");
+  const saveNote = document.getElementById("save-note");
+
+  function showPanel() {
+    loginView.hidden = true;
+    panelView.hidden = false;
+    saveNote.textContent = "ব্যাকএন্ডের সাথে সংযোগ না থাকলে পরিবর্তন এই ব্রাউজারেই সংরক্ষিত হবে (localStorage)।";
+    loadAll();
+  }
+
+  function showLogin() {
+    panelView.hidden = true;
+    loginView.hidden = false;
+    try { sessionStorage.removeItem(LOGIN_KEY); } catch (e) {}
+  }
+
+  document.getElementById("login-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const value = document.getElementById("passcode").value;
+    if (value === getPasscode()) {
+      try { sessionStorage.setItem(LOGIN_KEY, "1"); } catch (e2) {}
+      document.getElementById("passcode").value = "";
+      showPanel();
+    } else {
+      showNotice(loginNotice, "ভুল পাসকোড। আবার চেষ্টা করুন।", "error");
+    }
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", showLogin);
+
+  // ---------- ট্যাব ----------
+  function switchTab(name) {
+    document.querySelectorAll(".admin-tab").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.tab === name);
+    });
+    document.querySelectorAll(".admin-tab-panel").forEach((panel) => {
+      panel.hidden = panel.id !== "tab-" + name;
+    });
+  }
+  document.querySelectorAll(".admin-tab").forEach((btn) => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
+  document.getElementById("goto-offers").addEventListener("click", (e) => {
+    e.preventDefault();
+    switchTab("offers");
+  });
+  document.getElementById("goto-requests").addEventListener("click", (e) => {
+    e.preventDefault();
+    switchTab("requests");
+  });
+
+  // ---------- তথ্য লোড ----------
+  let tutors = [];
+  let offers = [];
+  let requests = [];
+
+  function mergeLocal(kind, items) {
+    const keys = ADMIN_KIND_KEYS[kind];
+    const local = readAdminList(keys.local);
+    const ids = new Set(items.map((x) => String(x.id)));
+    const merged = [...items];
+    local.forEach((x) => {
+      if (!ids.has(String(x.id))) merged.push(x);
+    });
+    return applyLocalChanges(kind, merged);
+  }
+
+  function byCreatedDesc(a, b) {
+    return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+  }
+
+  async function loadAll() {
+    try {
+      const [t, o, r] = await Promise.all([fetchTutors({}), fetchOffers({}), fetchRequests()]);
+      tutors = mergeLocal("tutors", t);
+      offers = mergeLocal("offers", o);
+      requests = mergeLocal("requests", r);
+    } catch (e) {
+      tutors = allLocalTutors();
+      offers = allLocalOffers();
+      requests = allLocalRequests();
+    }
+    renderDashboard();
+    renderTutors();
+    renderOffers();
+    renderRequests();
+  }
+
+  function renderDashboard() {
+    const openOffers = offers.filter((o) => o.status !== "বন্ধ").length;
+    const newRequests = requests.filter((r) => r.status === "নতুন").length;
+    const available = tutors.filter((t) => t.available).length;
+    document.getElementById("stat-tutors").textContent = tutors.length;
+    document.getElementById("stat-offers").textContent = offers.length;
+    document.getElementById("stat-open-offers").textContent = openOffers;
+    document.getElementById("stat-requests").textContent = requests.length;
+    document.getElementById("stat-new-requests").textContent = newRequests;
+    document.getElementById("stat-available").textContent = available;
+    document.getElementById("count-tutors").textContent = "(" + tutors.length + ")";
+    document.getElementById("count-offers").textContent = "(" + offers.length + ")";
+    document.getElementById("count-requests").textContent = "(" + requests.length + ")";
+
+    const recentOffers = [...offers].sort(byCreatedDesc).slice(0, 5);
+    document.getElementById("recent-offers").innerHTML = recentOffers.length
+      ? recentOffers.map((o) => `<div class="recent-item"><strong>📍 ${escapeHtml(o.location)}</strong> — ${escapeHtml(o.class)} • ৳${Number(o.salary).toLocaleString("bn-BD")} • ${o.status === "বন্ধ" ? "বন্ধ" : "খোলা"}</div>`).join("")
+      : '<p class="empty">কোনো অফার নেই।</p>';
+
+    const recentRequests = [...requests].sort(byCreatedDesc).slice(0, 5);
+    document.getElementById("recent-requests").innerHTML = recentRequests.length
+      ? recentRequests.map((r) => `<div class="recent-item"><strong>${escapeHtml(r.studentName)}</strong> — ${escapeHtml(r.class)} • ${escapeHtml(r.area)} • ${escapeHtml(r.status || "নতুন")}</div>`).join("")
+      : '<p class="empty">কোনো অনুরোধ নেই।</p>';
+  }
+
+  function renderTutors() {
+    const q = (document.getElementById("tutor-search").value || "").trim().toLowerCase();
+    const list = tutors.filter((t) => {
+      if (!q) return true;
+      const hay = [t.name, t.university, t.about || "", ...t.subjects, ...t.areas].join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+    renderAdminRows(document.getElementById("tutors-tbody"), list.map(adminTutorRowHTML), "কোনো টিউটর পাওয়া যায়নি।");
+  }
+
+  function renderOffers() {
+    const q = (document.getElementById("offer-search").value || "").trim().toLowerCase();
+    const status = document.getElementById("offer-status").value;
+    const list = offers.filter((o) => {
+      if (status && o.status !== status) return false;
+      if (!q) return true;
+      const hay = [o.location, o.class, o.preferredDepartment || "", o.posterName || "", ...o.subjects].join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+    renderAdminRows(document.getElementById("offers-tbody"), list.map(adminOfferRowHTML), "কোনো অফার পাওয়া যায়নি।");
+  }
+
+  function renderRequests() {
+    const q = (document.getElementById("request-search").value || "").trim().toLowerCase();
+    const status = document.getElementById("request-status").value;
+    const list = requests.filter((r) => {
+      if (status && r.status !== status) return false;
+      if (!q) return true;
+      const hay = [r.studentName, r.guardianName || "", r.area, r.class, ...(r.subjects || [])].join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+    renderAdminRows(document.getElementById("requests-tbody"), list.map(adminRequestRowHTML), "কোনো অনুরোধ পাওয়া যায়নি।");
+  }
+
+  ["tutor-search"].forEach((id) => {
+    document.getElementById(id).addEventListener("input", renderTutors);
+  });
+  document.getElementById("offer-search").addEventListener("input", renderOffers);
+  document.getElementById("offer-status").addEventListener("change", renderOffers);
+  document.getElementById("request-search").addEventListener("input", renderRequests);
+  document.getElementById("request-status").addEventListener("change", renderRequests);
+
+  // ---------- অ্যাকশন ----------
+  function savedWhereText(where) {
+    return where === "server" ? "সার্ভারে সংরক্ষিত হয়েছে।" : "সার্ভারের সাথে সংযোগ হয়নি — এই ব্রাউজারে সংরক্ষিত হয়েছে।";
+  }
+
+  async function handleAction(action, id) {
+    if (action === "view-tutor") {
+      openTutorModal(id);
+      return;
+    }
+    if (action === "view-offer") {
+      openOfferModal(id);
+      return;
+    }
+    if (action === "view-request") {
+      const r = requests.find((x) => String(x.id) === String(id));
+      if (r) openRequestModal(r);
+      return;
+    }
+    if (action === "status-request") {
+      const r = requests.find((x) => String(x.id) === String(id));
+      if (r) openRequestStatusModal(r);
+      return;
+    }
+    if (action === "delete-tutor") {
+      const t = tutors.find((x) => String(x.id) === String(id));
+      if (!t) return;
+      if (!confirm(`"${t.name}" টিউটরকে মুছে ফেলতে চান? এই কাজটি ফেরানো যাবে না।`)) return;
+      const where = await adminDelete("tutors", id);
+      alert(`টিউটর মুছে ফেলা হয়েছে। ${savedWhereText(where)}`);
+      loadAll();
+      return;
+    }
+    if (action === "delete-offer") {
+      const o = offers.find((x) => String(x.id) === String(id));
+      if (!o) return;
+      if (!confirm(`"${o.location} (${o.class})" অফারটি মুছে ফেলতে চান? এই কাজটি ফেরানো যাবে না।`)) return;
+      const where = await adminDelete("offers", id);
+      alert(`অফার মুছে ফেলা হয়েছে। ${savedWhereText(where)}`);
+      loadAll();
+      return;
+    }
+    if (action === "delete-request") {
+      const r = requests.find((x) => String(x.id) === String(id));
+      if (!r) return;
+      if (!confirm(`"${r.studentName}"-এর অনুরোধটি মুছে ফেলতে চান? এই কাজটি ফেরানো যাবে না।`)) return;
+      const where = await adminDelete("requests", id);
+      alert(`অনুরোধ মুছে ফেলা হয়েছে। ${savedWhereText(where)}`);
+      loadAll();
+      return;
+    }
+    if (action === "toggle-tutor") {
+      const t = tutors.find((x) => String(x.id) === String(id));
+      if (!t) return;
+      const next = !t.available;
+      const res = await adminPatch("tutors", id, { available: next });
+      alert(`"${t.name}" এখন ${next ? "উপলব্ধ" : "ব্যস্ত"}। ${savedWhereText(res.where)}`);
+      loadAll();
+      return;
+    }
+    if (action === "toggle-offer") {
+      const o = offers.find((x) => String(x.id) === String(id));
+      if (!o) return;
+      const next = o.status === "বন্ধ" ? "খোলা" : "বন্ধ";
+      const res = await adminPatch("offers", id, { status: next });
+      alert(`অফারটি এখন "${next}"। ${savedWhereText(res.where)}`);
+      loadAll();
+      return;
+    }
+  }
+
+  document.querySelectorAll("tbody").forEach((tbody) => {
+    tbody.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      handleAction(btn.dataset.action, btn.dataset.id);
+    });
+  });
+
+  // ---------- অনুরোধের বিস্তারিত ও স্ট্যাটাস মডাল ----------
+  function openRequestModal(r) {
+    const existing = document.querySelector(".modal-backdrop");
+    if (existing) existing.remove();
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="modal" role="dialog" aria-label="অনুরোধের বিস্তারিত">
+        <button class="modal-close" aria-label="বন্ধ করুন">✕</button>
+        <h2 style="margin-top:0">${escapeHtml(r.studentName)}</h2>
+        <p><strong>অভিভাবক:</strong> ${escapeHtml(r.guardianName || "—")}</p>
+        <p><strong>ফোন:</strong> <a href="tel:${String(r.phone || "").replace(/[^0-9+]/g, "")}">${escapeHtml(r.phone || "")}</a></p>
+        <p><strong>শ্রেণি:</strong> ${escapeHtml(r.class)}</p>
+        <p><strong>বিষয়:</strong> ${(r.subjects || []).map((s) => `<span class="tag">${escapeHtml(s)}</span>`).join("")}</p>
+        <p><strong>এলাকা:</strong> ${escapeHtml(r.area)}</p>
+        <p><strong>মাসিক বাজেট:</strong> ${r.budget ? "৳" + Number(r.budget).toLocaleString("bn-BD") : "—"}</p>
+        <p><strong>পছন্দের সময়:</strong> ${escapeHtml(r.preferredTime || "—")}</p>
+        <p><strong>স্ট্যাটাস:</strong> ${escapeHtml(r.status || "নতুন")}</p>
+        ${r.notes ? `<p><strong>বিশেষ নোট:</strong> ${escapeHtml(r.notes)}</p>` : ""}
+        <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
+          ${r.phone ? `<a class="btn" href="tel:${String(r.phone).replace(/[^0-9+]/g, "")}">ফোন করুন</a>` : ""}
+          <button class="btn secondary" id="modal-status-btn" type="button">স্ট্যাটাস বদলান</button>
+        </div>
+      </div>`;
+    document.body.appendChild(backdrop);
+    const close = () => backdrop.remove();
+    backdrop.querySelector(".modal-close").addEventListener("click", close);
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) close();
+    });
+    backdrop.querySelector("#modal-status-btn").addEventListener("click", () => {
+      close();
+      openRequestStatusModal(r);
+    });
+  }
+
+  function openRequestStatusModal(r) {
+    const existing = document.querySelector(".modal-backdrop");
+    if (existing) existing.remove();
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="modal" role="dialog" aria-label="স্ট্যাটাস বদলান">
+        <button class="modal-close" aria-label="বন্ধ করুন">✕</button>
+        <h2 style="margin-top:0">স্ট্যাটাস বদলান</h2>
+        <p><strong>${escapeHtml(r.studentName)}</strong> — বর্তমান স্ট্যাটাস: ${escapeHtml(r.status || "নতুন")}</p>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+          ${["নতুন", "যোগাযোগ হয়েছে", "সম্পন্ন"].map((s) => `<button class="btn ${r.status === s ? "" : "secondary"}" data-status="${s}" type="button">${s}</button>`).join("")}
+        </div>
+      </div>`;
+    document.body.appendChild(backdrop);
+    const close = () => backdrop.remove();
+    backdrop.querySelector(".modal-close").addEventListener("click", close);
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) close();
+    });
+    backdrop.querySelectorAll("[data-status]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const res = await adminPatch("requests", r.id, { status: btn.dataset.status });
+        close();
+        alert(`স্ট্যাটাস "${btn.dataset.status}" করা হয়েছে। ${savedWhereText(res.where)}`);
+        loadAll();
+      });
+    });
+  }
+
+  // ---------- পাসকোড বদলান ----------
+  document.getElementById("passcode-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const notice = document.getElementById("settings-notice");
+    const current = document.getElementById("current-passcode").value;
+    const next = document.getElementById("new-passcode").value;
+    const confirmValue = document.getElementById("new-passcode-confirm").value;
+    if (current !== getPasscode()) {
+      showNotice(notice, "বর্তমান পাসকোড ভুল।", "error");
+      return;
+    }
+    if (next.length < 4) {
+      showNotice(notice, "নতুন পাসকোড কমপক্ষে ৪ অক্ষরের হতে হবে।", "error");
+      return;
+    }
+    if (next !== confirmValue) {
+      showNotice(notice, "নতুন পাসকোড দুবার একই হয়নি। আবার লিখুন।", "error");
+      return;
+    }
+    try {
+      localStorage.setItem(PASSCODE_KEY, next);
+    } catch (err) {
+      showNotice(notice, "পাসকোড সংরক্ষণ করা যায়নি।", "error");
+      return;
+    }
+    e.target.reset();
+    showNotice(notice, "পাসকোড সফলভাবে বদলানো হয়েছে।", "success");
+  });
+
+  // সেশন লগইন থাকলে সরাসরি প্যানেল দেখান
+  try {
+    if (sessionStorage.getItem(LOGIN_KEY) === "1") {
+      showPanel();
+    }
+  } catch (e) {}
+</script>
+</body>
+</html>

@@ -283,3 +283,98 @@ footer {
   h1 { font-size: 1.5rem; }
   .hero { padding: 28px 16px; }
 }
+
+/* ---------- অ্যাডমিন প্যানেল ---------- */
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0;
+}
+.admin-tab {
+  border: none;
+  background: none;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  font-family: inherit;
+}
+.admin-tab:hover { color: var(--primary); }
+.admin-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.admin-tab .count { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+}
+.stat-num { font-size: 2rem; font-weight: 800; color: var(--primary); line-height: 1.2; }
+.stat-label { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+
+.recent-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 8px 0;
+}
+
+.table-wrap { overflow-x: auto; margin-top: 16px; }
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 0.92rem;
+}
+.admin-table th, .admin-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.admin-table thead th {
+  background: #f0fdfa;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.admin-table tbody tr:hover { background: #fafafa; }
+.admin-table .actions { white-space: nowrap; }
+
+.btn-small {
+  display: inline-block;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin: 2px 2px 2px 0;
+  font-family: inherit;
+}
+.btn-small:hover { background: var(--primary-dark); }
+.btn-small.secondary { background: #fff; color: var(--primary); border: 1px solid var(--primary); }
+.btn-small.danger { background: #dc2626; }
+.btn-small.danger:hover { background: #b91c1c; }
+
+@media (max-width: 600px) {
+  .stat-num { font-size: 1.6rem; }
+}

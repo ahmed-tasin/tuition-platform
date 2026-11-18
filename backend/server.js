@@ -113,6 +113,42 @@ app.post("/api/tutors", (req, res) => {
   res.status(201).json(tutor);
 });
 
+const TUTOR_PATCH_FIELDS = ["name", "university", "department", "subjects", "classes", "areas", "monthlyFee", "experienceYears", "phone", "about", "available"];
+
+app.patch("/api/tutors/:id", (req, res) => {
+  const tutors = readJson(TUTORS_FILE, []);
+  const tutor = tutors.find((t) => String(t.id) === String(req.params.id));
+  if (!tutor) {
+    return res.status(404).json({ error: "টিউটর পাওয়া যায়নি" });
+  }
+  const body = req.body || {};
+  TUTOR_PATCH_FIELDS.forEach((key) => {
+    if (body[key] === undefined) return;
+    if (key === "monthlyFee" || key === "experienceYears") {
+      tutor[key] = Number(body[key]);
+    } else if (key === "available") {
+      tutor[key] = body[key] === true || body[key] === "true";
+    } else if (["subjects", "classes", "areas"].includes(key)) {
+      tutor[key] = Array.isArray(body[key]) ? body[key] : [body[key]];
+    } else {
+      tutor[key] = String(body[key]).trim();
+    }
+  });
+  writeJson(TUTORS_FILE, tutors);
+  res.json(tutor);
+});
+
+app.delete("/api/tutors/:id", (req, res) => {
+  const tutors = readJson(TUTORS_FILE, []);
+  const index = tutors.findIndex((t) => String(t.id) === String(req.params.id));
+  if (index === -1) {
+    return res.status(404).json({ error: "টিউটর পাওয়া যায়নি" });
+  }
+  const [removed] = tutors.splice(index, 1);
+  writeJson(TUTORS_FILE, tutors);
+  res.json({ deleted: true, id: removed.id });
+});
+
 // ---------- Tutor requests (students / parents) ----------
 app.get("/api/requests", (req, res) => {
   res.json(readJson(REQUESTS_FILE, []));
@@ -147,6 +183,53 @@ app.post("/api/requests", (req, res) => {
   requests.push(request);
   writeJson(REQUESTS_FILE, requests);
   res.status(201).json(request);
+});
+
+const REQUEST_STATUSES = ["নতুন", "যোগাযোগ হয়েছে", "সম্পন্ন"];
+const REQUEST_PATCH_FIELDS = ["studentName", "guardianName", "phone", "class", "subjects", "area", "budget", "preferredTime", "notes", "status"];
+
+app.get("/api/requests/:id", (req, res) => {
+  const requests = readJson(REQUESTS_FILE, []);
+  const request = requests.find((r) => String(r.id) === String(req.params.id));
+  if (!request) {
+    return res.status(404).json({ error: "অনুরোধ পাওয়া যায়নি" });
+  }
+  res.json(request);
+});
+
+app.patch("/api/requests/:id", (req, res) => {
+  const requests = readJson(REQUESTS_FILE, []);
+  const request = requests.find((r) => String(r.id) === String(req.params.id));
+  if (!request) {
+    return res.status(404).json({ error: "অনুরোধ পাওয়া যায়নি" });
+  }
+  const body = req.body || {};
+  if (body.status !== undefined && !REQUEST_STATUSES.includes(body.status)) {
+    return res.status(400).json({ error: "সঠিক স্ট্যাটাস দিন: " + REQUEST_STATUSES.join(", ") });
+  }
+  REQUEST_PATCH_FIELDS.forEach((key) => {
+    if (body[key] === undefined) return;
+    if (key === "budget") {
+      request[key] = body[key] === null || body[key] === "" ? null : Number(body[key]);
+    } else if (key === "subjects") {
+      request[key] = Array.isArray(body[key]) ? body[key] : [body[key]];
+    } else {
+      request[key] = String(body[key]).trim();
+    }
+  });
+  writeJson(REQUESTS_FILE, requests);
+  res.json(request);
+});
+
+app.delete("/api/requests/:id", (req, res) => {
+  const requests = readJson(REQUESTS_FILE, []);
+  const index = requests.findIndex((r) => String(r.id) === String(req.params.id));
+  if (index === -1) {
+    return res.status(404).json({ error: "অনুরোধ পাওয়া যায়নি" });
+  }
+  const [removed] = requests.splice(index, 1);
+  writeJson(REQUESTS_FILE, requests);
+  res.json({ deleted: true, id: removed.id });
 });
 
 // ---------- Tuition offers (guardians / students post tuition jobs) ----------
@@ -227,6 +310,47 @@ app.post("/api/offers", (req, res) => {
   offers.push(offer);
   writeJson(OFFERS_FILE, offers);
   res.status(201).json(offer);
+});
+
+const OFFER_STATUSES = ["খোলা", "বন্ধ"];
+const OFFER_PATCH_FIELDS = ["teacherGender", "preferredDepartment", "location", "class", "subjects", "studentCount", "salary", "daysPerWeek", "durationPerDay", "mediaFee", "posterName", "phone", "notes", "status"];
+
+app.patch("/api/offers/:id", (req, res) => {
+  const offers = readJson(OFFERS_FILE, []);
+  const offer = offers.find((o) => String(o.id) === String(req.params.id));
+  if (!offer) {
+    return res.status(404).json({ error: "অফার পাওয়া যায়নি" });
+  }
+  const body = req.body || {};
+  if (body.status !== undefined && !OFFER_STATUSES.includes(body.status)) {
+    return res.status(400).json({ error: "সঠিক স্ট্যাটাস দিন: " + OFFER_STATUSES.join(", ") });
+  }
+  if (body.teacherGender !== undefined && !["male", "female", "any"].includes(body.teacherGender)) {
+    return res.status(400).json({ error: "সঠিক লিঙ্গ পছন্দ দিন: male, female বা any" });
+  }
+  OFFER_PATCH_FIELDS.forEach((key) => {
+    if (body[key] === undefined) return;
+    if (["studentCount", "salary", "daysPerWeek"].includes(key)) {
+      offer[key] = Number(body[key]);
+    } else if (key === "subjects") {
+      offer[key] = Array.isArray(body[key]) ? body[key] : [body[key]];
+    } else {
+      offer[key] = String(body[key]).trim();
+    }
+  });
+  writeJson(OFFERS_FILE, offers);
+  res.json(offer);
+});
+
+app.delete("/api/offers/:id", (req, res) => {
+  const offers = readJson(OFFERS_FILE, []);
+  const index = offers.findIndex((o) => String(o.id) === String(req.params.id));
+  if (index === -1) {
+    return res.status(404).json({ error: "অফার পাওয়া যায়নি" });
+  }
+  const [removed] = offers.splice(index, 1);
+  writeJson(OFFERS_FILE, offers);
+  res.json({ deleted: true, id: removed.id });
 });
 
 // ---------- Fallback: serve the frontend for any other route ----------

@@ -29,7 +29,55 @@ function localTutors() {
 }
 
 function allLocalTutors() {
-  return [...FALLBACK_TUTORS, ...localTutors()];
+  return applyLocalChanges("tutors", [...FALLBACK_TUTORS, ...localTutors()]);
+}
+
+// ---------- অ্যাডমিনের স্থানীয় পরিবর্তন (স্ট্যাটিক সাইটে) ----------
+// ব্যাকএন্ড না থাকলে অ্যাডমিনের মুছে ফেলা / স্ট্যাটাস বদলানো এখানে সংরক্ষিত হয়
+const ADMIN_KIND_KEYS = {
+  tutors: { deleted: "tp_admin_deleted_tutors", overrides: "tp_admin_overrides_tutors", local: "tp_local_tutors" },
+  offers: { deleted: "tp_admin_deleted_offers", overrides: "tp_admin_overrides_offers", local: "tp_local_offers" },
+  requests: { deleted: "tp_admin_deleted_requests", overrides: "tp_admin_overrides_requests", local: "tp_local_requests" }
+};
+
+function readAdminList(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function readAdminMap(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+
+// মুছে ফেলা আইটেম বাদ দিন ও সংরক্ষিত স্ট্যাটাস/পরিবর্তন প্রয়োগ করুন
+function applyLocalChanges(kind, items) {
+  const keys = ADMIN_KIND_KEYS[kind];
+  const deleted = new Set(readAdminList(keys.deleted).map(String));
+  const overrides = readAdminMap(keys.overrides);
+  return items
+    .filter((item) => !deleted.has(String(item.id)))
+    .map((item) => (overrides[String(item.id)] ? { ...item, ...overrides[String(item.id)] } : item));
+}
+
+function removeLocalItem(kind, id) {
+  const keys = ADMIN_KIND_KEYS[kind];
+  localStorage.setItem(keys.local, JSON.stringify(readAdminList(keys.local).filter((x) => String(x.id) !== String(id))));
+}
+
+function saveLocalItem(kind, item) {
+  const keys = ADMIN_KIND_KEYS[kind];
+  const local = readAdminList(keys.local);
+  const i = local.findIndex((x) => String(x.id) === String(item.id));
+  if (i >= 0) local[i] = item;
+  else local.push(item);
+  localStorage.setItem(keys.local, JSON.stringify(local));
 }
 
 function filterTutors(tutors, f) {
@@ -230,7 +278,7 @@ function allLocalOffers() {
   local.forEach((o) => {
     if (!fallbackIds.has(String(o.id))) merged.push(o);
   });
-  return merged;
+  return applyLocalChanges("offers", merged);
 }
 
 function filterOffers(offers, f) {
@@ -273,6 +321,124 @@ async function fetchOffer(id) {
     return await res.json();
   } catch (e) {
     return allLocalOffers().find((o) => String(o.id) === String(id)) || null;
+  }
+}
+
+// ---------- টিউটরের অনুরোধ (অ্যাডমিনের জন্য) ----------
+// ব্যাকএন্ড না পাওয়া গেলে ব্যবহারের জন্য বিল্ট-ইন অনুরোধ তালিকা (সার্ভারের seed-এর মতোই)
+const FALLBACK_REQUESTS = [
+  { id: 1, studentName: "রাফি হাসান", guardianName: "করিম হোসেন", phone: "01711-234521", class: "৯ম শ্রেণি", subjects: ["গণিত", "পদার্থবিজ্ঞান"], area: "মিরপুর", budget: 4500, preferredTime: "বিকাল (৪টা–৬টা)", notes: "সপ্তাহে ৪ দিন, গণিতের দুর্বল অধ্যায়গুলোতে বিশেষ যত্ন নিতে হবে।", status: "নতুন", createdAt: "2026-11-18T10:30:00.000Z" },
+  { id: 2, studentName: "নুসরাত জাহান", guardianName: "আবদুল করিম", phone: "01711-234522", class: "HSC 26", subjects: ["ইংরেজি", "আইসিটি"], area: "ধানমন্ডি", budget: 6000, preferredTime: "সন্ধ্যা (৬টা–৯টা)", notes: "ইংরেজি রাইটিংয়ে দুর্বল, গ্রামারসহ পড়াতে হবে।", status: "নতুন", createdAt: "2026-11-18T10:35:00.000Z" },
+  { id: 3, studentName: "তানজিলা আক্তার", guardianName: "মোঃ রফিক", phone: "01711-234523", class: "SSC 27", subjects: ["রসায়ন", "জীববিজ্ঞান"], area: "ময়মনসিংহ সদর", budget: 3500, preferredTime: "সকাল (৭টা–১০টা)", notes: "মেডিকেল ভর্তি পরীক্ষার প্রস্তুতিসহ পড়াতে হবে।", status: "যোগাযোগ হয়েছে", createdAt: "2026-11-18T10:40:00.000Z" }
+];
+
+function localRequests() {
+  try {
+    return JSON.parse(localStorage.getItem("tp_local_requests") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function allLocalRequests() {
+  const local = localRequests();
+  const fallbackIds = new Set(FALLBACK_REQUESTS.map((r) => String(r.id)));
+  const merged = [...FALLBACK_REQUESTS];
+  local.forEach((r) => {
+    if (!fallbackIds.has(String(r.id))) merged.push(r);
+  });
+  return applyLocalChanges("requests", merged);
+}
+
+async function fetchRequests() {
+  try {
+    const res = await fetch(`${API_BASE}/requests`);
+    if (!res.ok) throw new Error("API error");
+    const fromApi = await res.json();
+    const apiIds = new Set(fromApi.map((r) => String(r.id)));
+    const extra = localRequests().filter((r) => !apiIds.has(String(r.id)));
+    return [...fromApi, ...extra];
+  } catch (e) {
+    return allLocalRequests();
+  }
+}
+
+async function fetchRequest(id) {
+  try {
+    const res = await fetch(`${API_BASE}/requests/${id}`);
+    if (!res.ok) throw new Error("API error");
+    return await res.json();
+  } catch (e) {
+    return allLocalRequests().find((r) => String(r.id) === String(id)) || null;
+  }
+}
+
+// ---------- অ্যাডমিন অ্যাকশন (API থাকলে সার্ভারে, না থাকলে স্থানীয়ভাবে) ----------
+async function apiDelete(path) {
+  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "সার্ভার ত্রুটি");
+  }
+  return res.json();
+}
+
+async function apiPatch(path, data) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "সার্ভার ত্রুটি");
+  }
+  return res.json();
+}
+
+// kind: "tutors" | "offers" | "requests" — ফেরত: "server" বা "local"
+async function adminDelete(kind, id) {
+  const path = kind === "tutors" ? `/tutors/${id}` : kind === "offers" ? `/offers/${id}` : `/requests/${id}`;
+  try {
+    await apiDelete(path);
+    removeLocalItem(kind, id);
+    return "server";
+  } catch (e) {
+    const keys = ADMIN_KIND_KEYS[kind];
+    const deleted = readAdminList(keys.deleted);
+    if (!deleted.map(String).includes(String(id))) {
+      deleted.push(id);
+      localStorage.setItem(keys.deleted, JSON.stringify(deleted));
+    }
+    removeLocalItem(kind, id);
+    return "local";
+  }
+}
+
+// ফেরত: { where: "server" | "local", item }
+async function adminPatch(kind, id, patch) {
+  const path = kind === "tutors" ? `/tutors/${id}` : kind === "offers" ? `/offers/${id}` : `/requests/${id}`;
+  try {
+    const updated = await apiPatch(path, patch);
+    const local = readAdminList(ADMIN_KIND_KEYS[kind].local);
+    const i = local.findIndex((x) => String(x.id) === String(id));
+    if (i >= 0) {
+      local[i] = { ...local[i], ...patch };
+      localStorage.setItem(ADMIN_KIND_KEYS[kind].local, JSON.stringify(local));
+    }
+    return { where: "server", item: updated };
+  } catch (e) {
+    const keys = ADMIN_KIND_KEYS[kind];
+    const overrides = readAdminMap(keys.overrides);
+    overrides[String(id)] = { ...(overrides[String(id)] || {}), ...patch };
+    localStorage.setItem(keys.overrides, JSON.stringify(overrides));
+    const local = readAdminList(keys.local);
+    const i = local.findIndex((x) => String(x.id) === String(id));
+    if (i >= 0) {
+      local[i] = { ...local[i], ...patch };
+      localStorage.setItem(keys.local, JSON.stringify(local));
+    }
+    return { where: "local", item: null };
   }
 }
 
@@ -362,4 +528,72 @@ async function openOfferModal(id) {
       document.removeEventListener("keydown", esc);
     }
   });
+}
+
+// ---------- অ্যাডমিন টেবিল ----------
+// টেবিলের সারি (tbody-তে বসানোর মতো HTML) তৈরি করে; অ্যাকশন বোতামগুলো data-action / data-id ধরে
+function adminTutorRowHTML(t) {
+  return `<tr data-id="${t.id}">
+    <td><strong>${escapeHtml(t.name)}</strong><br><span class="muted">${escapeHtml(t.university)}${t.department ? " • " + escapeHtml(t.department) : ""}</span></td>
+    <td>${t.subjects.map((s) => `<span class="tag">${escapeHtml(s)}</span>`).join("")}</td>
+    <td>${t.areas.map((a) => escapeHtml(a)).join(", ")}</td>
+    <td><span class="fee" style="font-size:1rem">৳${Number(t.monthlyFee).toLocaleString("bn-BD")}</span></td>
+    <td><span class="rating">${stars(t.rating || 5)} ${(t.rating || 5).toFixed(1)}</span></td>
+    <td>${t.available ? '<span class="badge available">উপলব্ধ</span>' : '<span class="badge busy">ব্যস্ত</span>'}</td>
+    <td class="actions">
+      <button class="btn-small" data-action="view-tutor" data-id="${t.id}" type="button">দেখুন</button>
+      <button class="btn-small secondary" data-action="toggle-tutor" data-id="${t.id}" type="button">${t.available ? "ব্যস্ত করুন" : "উপলব্ধ করুন"}</button>
+      <button class="btn-small danger" data-action="delete-tutor" data-id="${t.id}" type="button">মুছুন</button>
+    </td>
+  </tr>`;
+}
+
+function adminOfferRowHTML(o) {
+  return `<tr data-id="${o.id}">
+    <td><strong>📍 ${escapeHtml(o.location)}</strong><br><span class="muted">${escapeHtml(o.posterName || "")}</span></td>
+    <td>${escapeHtml(o.class)}</td>
+    <td>${o.subjects.map((s) => `<span class="tag">${escapeHtml(s)}</span>`).join("")}</td>
+    <td><span class="fee" style="font-size:1rem">৳${Number(o.salary).toLocaleString("bn-BD")}</span></td>
+    <td>${genderLabel(o.teacherGender)}</td>
+    <td>${o.mediaFee === "প্রযোজ্য" ? '<span class="badge media-yes">প্রযোজ্য</span>' : '<span class="badge media-no">প্রযোজ্য নয়</span>'}</td>
+    <td>${o.status === "বন্ধ" ? '<span class="badge busy">বন্ধ</span>' : '<span class="badge available">খোলা</span>'}</td>
+    <td class="actions">
+      <button class="btn-small" data-action="view-offer" data-id="${o.id}" type="button">দেখুন</button>
+      <button class="btn-small secondary" data-action="toggle-offer" data-id="${o.id}" type="button">${o.status === "বন্ধ" ? "খুলুন" : "বন্ধ করুন"}</button>
+      <button class="btn-small danger" data-action="delete-offer" data-id="${o.id}" type="button">মুছুন</button>
+    </td>
+  </tr>`;
+}
+
+function adminRequestRowHTML(r) {
+  const statusBadge = r.status === "সম্পন্ন"
+    ? '<span class="badge available">সম্পন্ন</span>'
+    : r.status === "যোগাযোগ হয়েছে"
+    ? '<span class="badge media-yes">যোগাযোগ হয়েছে</span>'
+    : '<span class="badge gender-any">নতুন</span>';
+  return `<tr data-id="${r.id}">
+    <td><strong>${escapeHtml(r.studentName)}</strong><br><span class="muted">${escapeHtml(r.guardianName || "")} • <a href="tel:${String(r.phone || "").replace(/[^0-9+]/g, "")}">${escapeHtml(r.phone || "")}</a></span></td>
+    <td>${escapeHtml(r.class)}</td>
+    <td>${(r.subjects || []).map((s) => `<span class="tag">${escapeHtml(s)}</span>`).join("")}</td>
+    <td>${escapeHtml(r.area)}</td>
+    <td>${r.budget ? "৳" + Number(r.budget).toLocaleString("bn-BD") : "—"}</td>
+    <td>${escapeHtml(r.preferredTime || "—")}</td>
+    <td>${statusBadge}</td>
+    <td class="actions">
+      <button class="btn-small" data-action="view-request" data-id="${r.id}" type="button">দেখুন</button>
+      <button class="btn-small secondary" data-action="status-request" data-id="${r.id}" type="button">স্ট্যাটাস</button>
+      <button class="btn-small danger" data-action="delete-request" data-id="${r.id}" type="button">মুছুন</button>
+    </td>
+  </tr>`;
+}
+
+// tbody-তে সারি বসান; খালি হলে বার্তা দেখান
+function renderAdminRows(tbody, rowsHtml, emptyText) {
+  if (!tbody) return;
+  if (!rowsHtml.length) {
+    const colCount = tbody.closest("table") ? tbody.closest("table").querySelectorAll("thead th").length : 1;
+    tbody.innerHTML = `<tr><td colspan="${colCount}"><p class="empty">${escapeHtml(emptyText)}</p></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rowsHtml.join("");
 }
